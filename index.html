@@ -846,11 +846,8 @@
           toc,
           toc.getBoundingClientRect().height,
         ]));
-        currentHeights.forEach((height, toc) => {
+        currentHeights.forEach((_, toc) => {
           cancelTocAnimation(toc);
-          if (!hidden && height > 0) {
-            toc.dataset.expandedHeight = String(height);
-          }
         });
         root.classList.toggle("toc-hidden", hidden);
         tocToggle?.setAttribute("aria-pressed", String(hidden));
