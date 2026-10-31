@@ -1,0 +1,706 @@
+<!DOCTYPE html><html lang="zh-Hans" data-language="zh-Hans" data-default-language="zh-Hans" data-base-url="/" data-page-type="standard" data-share-language="zh-Hans" data-available-languages="[&#34;zh-Hans&#34;,&#34;en&#34;,&#34;ja&#34;,&#34;ko&#34;,&#34;zh-Hant&#34;]"> <head><script>
+      (() => {
+        document.documentElement.dataset.languagePending = "true";
+        if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+          document.documentElement.dataset.navigationHoverSuppressed = "true";
+        }
+        const root = document.documentElement;
+        if (
+          root.dataset.pageType === "article" &&
+          window.matchMedia("(max-width: 980px)").matches
+        ) {
+          root.classList.add("toc-hidden");
+        }
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const cachedLanguage = localStorage.getItem("language-preference");
+        const normalizedCachedLanguage = cachedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : cachedLanguage;
+        const pageUrl = new URL(window.location.href);
+        const requestedLanguage =
+          new URLSearchParams(pageUrl.hash.slice(1)).get("lang") ??
+          pageUrl.searchParams.get("lang") ??
+          root.dataset.shareLanguage;
+        const normalizedRequestedLanguage = requestedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : requestedLanguage;
+        const hasRequestedLanguage = availableLanguages.includes(normalizedRequestedLanguage);
+        const hasCachedLanguage = availableLanguages.includes(normalizedCachedLanguage);
+        const systemLanguages = hasRequestedLanguage || hasCachedLanguage
+          ? []
+          : navigator.languages?.length
+            ? navigator.languages
+            : [navigator.language];
+        const systemLanguage = systemLanguages
+          .map((value) => value.toLowerCase().replaceAll("_", "-"))
+          .map((value) => {
+            const exact = availableLanguages.find((language) => language.toLowerCase() === value);
+            if (exact) return exact;
+            const directMatch = availableLanguages.find((language) =>
+              value.startsWith(`${language.toLowerCase()}-`),
+            );
+            if (directMatch) return directMatch;
+            if (value.startsWith("zh-")) {
+              const script = /-(hant|tw|hk|mo)(-|$)/i.test(value) ? "zh-Hant" : "zh-Hans";
+              return availableLanguages.includes(script) ? script : undefined;
+            }
+            return undefined;
+          })
+          .find(Boolean);
+        const language = hasRequestedLanguage
+          ? normalizedRequestedLanguage
+          : hasCachedLanguage
+          ? normalizedCachedLanguage
+          : systemLanguage ?? defaultLanguage;
+        if (hasRequestedLanguage && (pageUrl.hash || root.dataset.shareLanguage)) {
+          localStorage.setItem("language-preference", language);
+        }
+        document.documentElement.dataset.language = language;
+        document.documentElement.lang = language;
+        const savedTheme = localStorage.getItem("theme");
+        if (!savedTheme) {
+          const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          localStorage.setItem("theme", systemTheme);
+          document.documentElement.classList.toggle("dark", systemTheme === "dark");
+        }
+        const homePostView = localStorage.getItem("home-post-view");
+        document.documentElement.dataset.homePostView =
+          homePostView === "grid" ? "grid" : "list";
+        const markScrollRestoration = (root) => {
+          root.setAttribute("data-scroll-restoring", "");
+        };
+        const pauseCarousels = (root) => {
+          root.setAttribute("data-carousel-navigation", "");
+        };
+        const resumeCarousels = (root) => {
+          root.removeAttribute("data-carousel-navigation");
+        };
+        const resumeCarouselsAfterImagesDecode = async () => {
+          const root = document.documentElement;
+          const logos = new Map();
+          document
+            .querySelectorAll(
+              ".about-skills-marquee .creativity-set img, .creativity-marquee .creativity-set img, .creativity-mobile-marquee .creativity-set img",
+            )
+            .forEach((image) => {
+              if (image instanceof HTMLImageElement) {
+                logos.set(image.currentSrc || image.src, image);
+              }
+            });
+
+          await Promise.allSettled(
+            [...logos.values()].map((image) => image.decode()),
+          );
+          if (root !== document.documentElement) return;
+
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+          if (root === document.documentElement) {
+            resumeCarousels(root);
+          }
+        };
+        const hasCarousels = (document) =>
+          document.querySelector(".about-page, .home-visual .creativity-marquee");
+        const hasCarouselAtTarget = (url) => {
+          const path = new URL(url, window.location.href).pathname;
+          const base = (root.dataset.baseUrl || "/").replace(/\/+$/, "");
+          const sitePath = base && path.startsWith(`${base}/`) ? path.slice(base.length) : path;
+          const normalizedPath = sitePath.replace(/\/+$/, "");
+          return normalizedPath === "" || normalizedPath === "/" || normalizedPath === "/about";
+        };
+        const clearScrollRestoration = () => {
+          document.documentElement.removeAttribute("data-scroll-restoring");
+        };
+
+        markScrollRestoration(document.documentElement);
+        pauseCarousels(document.documentElement);
+        document.addEventListener("astro:before-preparation", (event) => {
+          if (hasCarousels(document) || hasCarouselAtTarget(event.to)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        document.addEventListener("astro:before-swap", (event) => {
+          event.newDocument.documentElement.dataset.languagePending = "true";
+          event.newDocument.documentElement.dataset.navigationGradientReady = "true";
+          if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+            event.newDocument.documentElement.dataset.navigationHoverSuppressed = "true";
+          }
+          markScrollRestoration(document.documentElement);
+          markScrollRestoration(event.newDocument.documentElement);
+          const currentHeader = document.querySelector(".site-header");
+          const currentCapsule = currentHeader?.querySelector(".header-inner");
+          delete window.navigationGradientStartRatio;
+          if (currentCapsule && currentHeader?.dataset.pageType !== "article") {
+            const currentWidth = currentCapsule.getBoundingClientRect().width;
+            const gradientTransform = getComputedStyle(
+              currentCapsule,
+              "::before",
+            ).transform;
+            const currentShift =
+              gradientTransform === "none"
+                ? 0
+                : new DOMMatrixReadOnly(gradientTransform).m41;
+            if (currentWidth > 0 && Number.isFinite(currentShift)) {
+              window.navigationGradientStartRatio =
+                0.5 + currentShift / currentWidth;
+            }
+          }
+          if (hasCarousels(document) || hasCarousels(event.newDocument)) {
+            pauseCarousels(document.documentElement);
+            pauseCarousels(event.newDocument.documentElement);
+          }
+        });
+        document.addEventListener("astro:after-swap", clearScrollRestoration);
+        document.addEventListener("astro:page-load", clearScrollRestoration, {
+          once: true,
+        });
+        document.addEventListener("astro:page-load", resumeCarouselsAfterImagesDecode);
+        window.addEventListener("pagehide", () => {
+          if (hasCarousels(document)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        window.addEventListener("pageshow", (event) => {
+          if (event.persisted) {
+            resumeCarouselsAfterImagesDecode();
+          }
+        });
+      })();
+    </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="none"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.QW52Ox2j.js"></script><script data-astro-rerun>
+      (() => {
+      const applySavedTheme = (root) => {
+        root.classList.toggle("dark", localStorage.getItem("theme") === "dark");
+      };
+      applySavedTheme(document.documentElement);
+      if (!window.themeSwapListenerInstalled) {
+        window.themeSwapListenerInstalled = true;
+        document.addEventListener("astro:before-swap", (event) => {
+          applySavedTheme(event.newDocument.documentElement);
+        });
+      }
+      })();
+    </script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="这里整理了我提供的实用服务，欢迎按需使用。"><link rel="canonical" href="https://hooleeas.github.io/charity"><meta property="og:type" content="website"><meta property="og:site_name" content="Hooleeas"><meta property="og:locale" content="zh_CN"><meta property="og:title" content="公益服务 · Hooleeas Blog"><meta property="og:description" content="这里整理了我提供的实用服务，欢迎按需使用。"><meta property="og:url" content="https://hooleeas.github.io/charity/zh-hans"><meta property="og:image" content="https://hooleeas.github.io/og/pages/zh-hans/charity.png?v=11"><meta property="og:image:alt" content="公益服务"><meta name="twitter:image:alt" content="公益服务"><meta property="og:image:width" content="1800"><meta property="og:image:height" content="600"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="公益服务 · Hooleeas Blog"><meta name="twitter:description" content="这里整理了我提供的实用服务，欢迎按需使用。"><meta name="twitter:image" content="https://hooleeas.github.io/og/pages/zh-hans/charity.png?v=11"><link rel="icon" href="/icon/favicon.ico?v=8" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" href="/icon/icon_16x16.png?v=8" sizes="16x16"><link rel="icon" type="image/png" href="/icon/icon_32x32.png?v=8" sizes="32x32"><link rel="icon" type="image/png" href="/icon/icon_48x48.png?v=8" sizes="48x48"><link rel="icon" type="image/png" href="/icon/icon_512x512.png?v=8" sizes="512x512"><link rel="apple-touch-icon" sizes="180x180" href="/icon/icon_180x180.png?v=8"><link rel="manifest" href="/icon/site.webmanifest?v=8"><title>公益服务 · Hooleeas Blog</title><link rel="stylesheet" href="/_astro/_slug_.CjN1iRWy.css"></head> <body> <svg class="glass-filter-definitions" aria-hidden="true" focusable="false"> <filter id="liquid-glass-refraction" x="-20%" y="-20%" width="140%" height="140%"> <feTurbulence type="fractalNoise" baseFrequency="0.035 0.045" numOctaves="1" seed="7" result="glass-noise"></feTurbulence> <feDisplacementMap in="SourceGraphic" in2="glass-noise" scale="2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap> </filter> </svg> <header class="site-header" data-page-type="standard"> <div class="container header-inner"> <a class="brand" href="/" data-home-link data-i18n="navigationHome"> 主页 </a> <div class="nav-controls">  <div class="share-control" data-share-control> <button class="share-trigger" type="button" aria-label="分享页面" aria-expanded="false" aria-controls="page-share-menu" data-share-toggle data-i18n-aria="shareMenuLabel"> <img class="share-icon" src="https://developer.apple.com/tutorials/images/com.apple.HIG/jp/icons-symbols-meaning-sharing@2x.png" alt="" aria-hidden="true"> </button> <div class="share-menu" id="page-share-menu" role="menu" hidden> <div class="share-qr-section" role="group"> <strong class="share-menu-heading" data-i18n="shareMenuHeading">分享此页面</strong> <canvas class="share-qr-code" width="160" height="160" role="img" aria-label="页面二维码" data-i18n-aria="shareQrCode" data-share-qr-code></canvas> <span class="share-qr-label" data-i18n="shareQrCode">扫码访问此页面</span> </div> <a class="share-menu-item" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" role="menuitem" data-share-x data-i18n="shareToX">分享到 X</a> <button class="share-menu-item" type="button" role="menuitem" data-share-copy data-i18n="copyShareLink">复制链接</button> </div> </div> <div class="language-picker"> <span class="language-glyph" aria-hidden="true"><span>文</span><small>A</small></span> <select class="language-select" aria-label="选择语言" data-i18n-aria="languagePicker" data-language-select> <option value="zh-Hans">简体中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh-Hant">繁體中文</option> </select> </div> <button class="toggle" aria-label="Toggle theme" data-i18n-aria="themeToggle" data-theme-toggle>
+◐
+</button> </div> <button class="mobile-menu-toggle" type="button" aria-label="打开导航菜单" aria-expanded="false" data-mobile-menu-toggle> <span></span><span></span><span></span> </button> </div> <nav class="site-nav"> <div class="nav-links"> <a href="/archive" data-i18n="archive">文章归档</a><a href="/notes" data-i18n="notes">随记</a><a href="/charity" data-i18n="services">公益服务</a><a href="/about" data-i18n="about">关于</a> </div> </nav> </header> <div class="mobile-nav-backdrop" data-mobile-nav-backdrop></div> <main> <script>(function(){const canonicalPath = "/charity";
+
+      window.location.replace(canonicalPath);
+    })();</script> </main> <footer> <div class="container">
+© 2026 Hooleeas </div> </footer> <script type="application/json" id="site-translations">{"zh-Hans":{"all":"全部","thisMonth":"本月发布","popular":"热门文章","list":"列表","grid":"网格","learnMore":"了解详细","languagePicker":"选择语言","themeToggle":"切换主题","openMobileMenu":"打开导航菜单","closeMobileMenu":"关闭导航菜单","showArticleContents":"显示文章目录","hideArticleContents":"隐藏文章目录","navigationHome":"主页","articleContents":"文章目录","articleTags":"文章标签","shareMenuLabel":"分享页面","shareMenuHeading":"分享此页面","shareQrCode":"扫码访问此页面","shareToX":"分享到 X","copyShareLink":"复制链接","shareArticleCopied":"链接已复制","shareArticleError":"无法自动复制链接，请手动复制下方地址。","articleShareTitle":"喜欢这篇文章？分享给更多人","articleShareDescription":"扫码打开文章，或将链接分享给朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果这篇文章对你有所帮助，欢迎支持我的创作。","donationBinance":"币安","donationWechat":"微信","donationAlipay":"支付宝","pagination":"文章分页","previousPage":"上一页","nextPage":"下一页","archive":"文章归档","notes":"随记","services":"公益服务","about":"关于","creativity":"Apple 订阅","creativityAriaLabel":"站长提供实惠Apple订阅共享服务","siteDays":"建站天数","sitePosts":"文章总数","siteWords":"全站字数","noPosts":"暂时还没有文章。","noPostsDescription":"新的内容正在准备中，欢迎稍后再来。","profileStats":"站点统计","featureSubtitle":"探索技术 创造可能","profile":"一名独立开发者，专注于技术探索与开源分享"},"zh-Hant":{"all":"全部","thisMonth":"本月發布","popular":"熱門文章","list":"列表","grid":"網格","learnMore":"了解詳情","languagePicker":"選擇語言","themeToggle":"切換主題","openMobileMenu":"開啟導覽選單","closeMobileMenu":"關閉導覽選單","showArticleContents":"顯示文章目錄","hideArticleContents":"隱藏文章目錄","navigationHome":"首頁","articleContents":"文章目錄","articleTags":"文章標籤","shareMenuLabel":"分享頁面","shareMenuHeading":"分享此頁面","shareQrCode":"掃描 QR Code 分享此頁面","shareToX":"分享到 X","copyShareLink":"複製連結","shareArticleCopied":"連結已複製","shareArticleError":"無法自動複製連結，請手動複製下方網址。","articleShareTitle":"喜歡這篇文章嗎？分享給更多人","articleShareDescription":"掃描 QR Code 開啟文章，或將連結分享給朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果這篇文章對你有所幫助，歡迎支持我的創作。","donationBinance":"幣安","donationWechat":"微信","donationAlipay":"支付寶","pagination":"文章分頁","previousPage":"上一頁","nextPage":"下一頁","archive":"文章歸檔","notes":"隨記","services":"公益服務","about":"關於","creativity":"Apple 訂閱","creativityAriaLabel":"站長提供實惠的 Apple 訂閱共享服務","siteDays":"建站天數","sitePosts":"文章總數","siteWords":"全站字數","noPosts":"暫時還沒有文章。","noPostsDescription":"新內容正在準備中，歡迎稍後再來。","profileStats":"網站統計","featureSubtitle":"探索技術，創造可能","profile":"一名獨立開發者，專注於技術探索與開源分享"},"en":{"all":"All","thisMonth":"This month","popular":"Popular","list":"List","grid":"Grid","learnMore":"Learn more","languagePicker":"Select language","themeToggle":"Toggle theme","openMobileMenu":"Open navigation menu","closeMobileMenu":"Close navigation menu","showArticleContents":"Show article contents","hideArticleContents":"Hide article contents","navigationHome":"Home","articleContents":"Contents","articleTags":"Article tags","shareMenuLabel":"Share this page","shareMenuHeading":"Share this page","shareQrCode":"Scan to open this page","shareToX":"Share on X","copyShareLink":"Copy link","shareArticleCopied":"Link copied","shareArticleError":"Could not copy the link automatically. Please copy the URL below.","articleShareTitle":"Enjoyed this article? Share it with others","articleShareDescription":"Scan the QR code to open the article, or share the link with a friend.","articleDonationTitle":"Support the author","articleDonationDescription":"If you found this article helpful, consider supporting my work.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"Article pagination","previousPage":"Previous","nextPage":"Next","archive":"Archive","notes":"Notes","services":"Charity","about":"About","creativity":"Apple Subscriptions","creativityAriaLabel":"Affordable Apple subscription sharing services offered by the site owner","siteDays":"Days online","sitePosts":"Articles","siteWords":"Words","noPosts":"No articles yet.","noPostsDescription":"New content is on the way. Please check back soon.","profileStats":"Site statistics","featureSubtitle":"Explore technology and creative possibilities","profile":"An independent developer focused on exploring technology and sharing open source"},"ja":{"all":"すべて","thisMonth":"今月の記事","popular":"人気の記事","list":"リスト","grid":"グリッド","learnMore":"詳しく見る","languagePicker":"言語を選択","themeToggle":"テーマを切り替え","openMobileMenu":"ナビゲーションメニューを開く","closeMobileMenu":"ナビゲーションメニューを閉じる","showArticleContents":"目次を表示","hideArticleContents":"目次を隠す","navigationHome":"ホーム","articleContents":"目次","articleTags":"記事のタグ","shareMenuLabel":"ページを共有","shareMenuHeading":"このページを共有","shareQrCode":"QRコードを読み取ってページを共有","shareToX":"X で共有","copyShareLink":"リンクをコピー","shareArticleCopied":"リンクをコピーしました","shareArticleError":"リンクを自動でコピーできません。下のURLを手動でコピーしてください。","articleShareTitle":"この記事が気に入ったら、ぜひ共有してください","articleShareDescription":"QRコードで記事を開くか、リンクを友達に共有できます。","articleDonationTitle":"作者を応援する","articleDonationDescription":"この記事がお役に立てたら、創作へのご支援をお願いします。","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"記事のページ送り","previousPage":"前へ","nextPage":"次へ","archive":"アーカイブ","notes":"日々のメモ","services":"サービス","about":"このサイトについて","creativity":"Apple サブスクリプション","creativityAriaLabel":"サイト管理者が提供するお得な Apple サブスクリプション共有サービス","siteDays":"運営日数","sitePosts":"記事数","siteWords":"総単語数","noPosts":"記事はまだありません。","noPostsDescription":"新しい記事を準備中です。また後ほどご覧ください。","profileStats":"サイト統計","featureSubtitle":"テクノロジーを探求し、新たな可能性を創造する","profile":"技術の探求とオープンソースの共有に取り組む個人開発者"},"ko":{"all":"전체","thisMonth":"이번 달","popular":"인기 글","list":"목록","grid":"그리드","learnMore":"자세히 보기","languagePicker":"언어 선택","themeToggle":"테마 전환","openMobileMenu":"탐색 메뉴 열기","closeMobileMenu":"탐색 메뉴 닫기","showArticleContents":"목차 표시","hideArticleContents":"목차 숨기기","navigationHome":"홈","articleContents":"목차","articleTags":"글 태그","shareMenuLabel":"페이지 공유","shareMenuHeading":"이 페이지 공유","shareQrCode":"QR 코드를 스캔해 페이지 공유","shareToX":"X에 공유","copyShareLink":"링크 복사","shareArticleCopied":"링크가 복사되었습니다","shareArticleError":"링크를 자동으로 복사할 수 없습니다. 아래 URL을 직접 복사해 주세요.","articleShareTitle":"이 글이 마음에 드셨나요? 더 많은 사람과 공유해 보세요","articleShareDescription":"QR 코드를 스캔해 글을 열거나 링크를 친구와 공유하세요.","articleDonationTitle":"작성자 후원하기","articleDonationDescription":"이 글이 도움이 되었다면 창작 활동을 응원해 주세요.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"글 페이지 이동","previousPage":"이전","nextPage":"다음","archive":"아카이브","notes":"짧은 메모","services":"서비스","about":"소개","creativity":"Apple 구독","creativityAriaLabel":"사이트 운영자가 제공하는 합리적인 Apple 구독 공유 서비스","siteDays":"운영 일수","sitePosts":"전체 글 수","siteWords":"전체 단어 수","noPosts":"아직 글이 없습니다.","noPostsDescription":"새 글을 준비하고 있습니다. 나중에 다시 방문해 주세요.","profileStats":"사이트 통계","featureSubtitle":"기술을 탐구하고 가능성을 만들다","profile":"기술 탐구와 오픈 소스 공유에 집중하는 독립 개발자"}}</script> <script data-astro-rerun>
+      (() => {
+      window.sitePageController?.abort();
+      const controller = new AbortController();
+      window.sitePageController = controller;
+      const listenerOptions = { signal: controller.signal };
+      const root = document.documentElement;
+      const withBase = (path) => {
+        if (!path.startsWith("/") || path.startsWith("//")) return path;
+        const base = root.dataset.baseUrl || "/";
+        const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+        if (path === normalizedBase.slice(0, -1) || path.startsWith(normalizedBase)) return path;
+        return `${normalizedBase}${path.slice(1)}`;
+      };
+      if (
+        root.dataset.pageType === "article" &&
+        window.matchMedia("(max-width: 980px)").matches
+      ) {
+        root.classList.add("toc-hidden");
+      } else {
+        root.classList.remove("toc-hidden");
+      }
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.pointerType !== "mouse" ||
+          !(event.target instanceof Element) ||
+          !event.target.closest(".site-header .brand, .site-header .site-nav .nav-links a")
+        ) return;
+        sessionStorage.setItem("navigation-hover-suppressed", "true");
+        root.dataset.navigationHoverSuppressed = "true";
+      }, { ...listenerOptions, capture: true });
+      window.addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "mouse") return;
+        sessionStorage.removeItem("navigation-hover-suppressed");
+        delete root.dataset.navigationHoverSuppressed;
+      }, listenerOptions);
+      const updateNavigationGradient = () => {
+        const header = document.querySelector(".site-header");
+        const capsule = header?.querySelector(".header-inner");
+        if (!header || !capsule || header.dataset.pageType === "article") {
+          capsule?.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const currentPageLink = header.querySelector(
+          '.brand[aria-current="page"], .site-nav .nav-links a[aria-current="page"]',
+        );
+        if (!currentPageLink) {
+          capsule.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const capsuleRect = capsule.getBoundingClientRect();
+        const linkRect = currentPageLink.getBoundingClientRect();
+        capsule.style.setProperty(
+          "--navigation-gradient-shift",
+          `${linkRect.left + linkRect.width / 2 - capsuleRect.left - capsuleRect.width / 2}px`,
+        );
+      };
+      const preserveGradientTransition =
+        root.dataset.navigationGradientReady === "true";
+      const gradientStartRatio = window.navigationGradientStartRatio;
+      delete window.navigationGradientStartRatio;
+      const gradientCapsule = document.querySelector(".site-header .header-inner");
+      if (
+        gradientCapsule &&
+        document.querySelector(".site-header")?.dataset.pageType !== "article"
+      ) {
+        if (Number.isFinite(gradientStartRatio)) {
+          gradientCapsule.style.setProperty("--navigation-gradient-transition", "0s");
+          gradientCapsule.style.setProperty(
+            "--navigation-gradient-shift",
+            `${gradientCapsule.getBoundingClientRect().width * (gradientStartRatio - 0.5)}px`,
+          );
+          getComputedStyle(gradientCapsule, "::before").transform;
+          gradientCapsule.style.removeProperty("--navigation-gradient-transition");
+        }
+        updateNavigationGradient();
+        getComputedStyle(gradientCapsule, "::before").transform;
+        if (preserveGradientTransition) {
+          root.dataset.navigationGradientReady = "true";
+        } else {
+          void document.fonts.ready.then(() => {
+            requestAnimationFrame(() => {
+              if (root !== document.documentElement || !gradientCapsule.isConnected) return;
+              updateNavigationGradient();
+              getComputedStyle(gradientCapsule, "::before").transform;
+              root.dataset.navigationGradientReady = "true";
+            });
+          });
+        }
+      } else {
+        updateNavigationGradient();
+      }
+      window.addEventListener("resize", updateNavigationGradient, listenerOptions);
+      document
+        .querySelector("[data-theme-toggle]")
+        ?.addEventListener("click", () => {
+          window.clearTimeout(window.themeTransitionTimer);
+          root.classList.add("theme-changing");
+          getComputedStyle(root).getPropertyValue("--bg");
+          root.classList.toggle("dark");
+          localStorage.setItem(
+            "theme",
+            root.classList.contains("dark") ? "dark" : "light",
+          );
+          window.themeTransitionTimer = window.setTimeout(() => {
+            root.classList.remove("theme-changing");
+          }, 560);
+        }, listenerOptions);
+
+      const translations = JSON.parse(document.querySelector("#site-translations").textContent);
+      const tocToggle = document.querySelector("[data-toc-toggle]");
+      const articleTocs = [...document.querySelectorAll(".article-toc")];
+      const tocAnimations = new WeakMap();
+      const setArticleTocHidden = (hidden, animate = false) => {
+        const visibleArticleTocs = articleTocs.filter((toc) =>
+          !toc.closest(".localized-article")?.hidden,
+        );
+        const currentHeights = new Map(visibleArticleTocs.map((toc) => [
+          toc,
+          toc.getBoundingClientRect().height,
+        ]));
+        currentHeights.forEach((height, toc) => {
+          tocAnimations.get(toc)?.cancel();
+          if (!hidden && height > 0) {
+            toc.dataset.expandedHeight = String(height);
+          }
+        });
+        root.classList.toggle("toc-hidden", hidden);
+        tocToggle?.setAttribute("aria-pressed", String(hidden));
+        articleTocs.forEach((toc) => {
+          toc.setAttribute("aria-hidden", String(hidden));
+          toc.inert = hidden;
+        });
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        tocToggle?.setAttribute(
+          "aria-label",
+          hidden ? dictionary.showArticleContents : dictionary.hideArticleContents,
+        );
+        if (animate) {
+          currentHeights.forEach((currentHeight, toc) => {
+            const expandedHeight = Number(toc.dataset.expandedHeight) || Math.min(
+              toc.scrollHeight,
+              Math.max(0, window.innerHeight - 120),
+            );
+            const targetHeight = hidden
+              ? 0
+              : Math.min(expandedHeight, Math.max(0, window.innerHeight - 120));
+            toc.style.maxHeight = "none";
+            toc.style.height = `${currentHeight}px`;
+            toc.getBoundingClientRect();
+            const animation = toc.animate(
+              [{ height: `${currentHeight}px` }, { height: `${targetHeight}px` }],
+              { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+            );
+            tocAnimations.set(toc, animation);
+            animation.onfinish = () => {
+              if (tocAnimations.get(toc) !== animation) return;
+              tocAnimations.delete(toc);
+              toc.style.removeProperty("height");
+              toc.style.removeProperty("max-height");
+            };
+          });
+        } else {
+          visibleArticleTocs.forEach((toc) => {
+            tocAnimations.get(toc)?.cancel();
+            tocAnimations.delete(toc);
+            toc.style.removeProperty("height");
+            toc.style.removeProperty("max-height");
+            if (!hidden) {
+              toc.dataset.expandedHeight = String(toc.getBoundingClientRect().height);
+            }
+          });
+        }
+      };
+      if (tocToggle) setArticleTocHidden(root.classList.contains("toc-hidden"));
+      tocToggle?.addEventListener("click", () => {
+        const hidden = tocToggle.getAttribute("aria-pressed") !== "true";
+        setArticleTocHidden(hidden, true);
+      }, listenerOptions);
+      const languageSelect = document.querySelector("[data-language-select]");
+      const shareControl = document.querySelector("[data-share-control]");
+      const shareToggle = shareControl?.querySelector("[data-share-toggle]");
+      const shareMenu = shareControl?.querySelector(".share-menu");
+      const shareXs = [...document.querySelectorAll("[data-share-x]")];
+      const shareCopies = [...document.querySelectorAll("[data-share-copy]")];
+      const siteHeader = shareControl?.closest(".site-header");
+      if (shareMenu && siteHeader) siteHeader.append(shareMenu);
+      const getShareUrl = (language = root.dataset.language) => {
+        const canonicalLink = document.querySelector('link[rel="canonical"]');
+        const canonicalPath = canonicalLink instanceof HTMLLinkElement
+          ? new URL(canonicalLink.href).pathname
+          : window.location.pathname;
+        const normalizedPath = canonicalPath.replace(/\/+$/, "");
+        const sharePath = normalizedPath
+          ? `${normalizedPath}/${language.toLowerCase()}`
+          : `/${language.toLowerCase()}`;
+        return new URL(sharePath, window.location.origin);
+      };
+      const updateShareUrl = (language) => {
+        const shareUrl = getShareUrl(language).href;
+        const xUrl = new URL("https://twitter.com/intent/tweet");
+        xUrl.searchParams.set("text", shareUrl);
+        shareXs.forEach((shareX) => {
+          shareX.href = xUrl.href;
+          shareX.dataset.appHref = `twitter://post?message=${encodeURIComponent(shareUrl)}`;
+        });
+        window.dispatchEvent(new CustomEvent("share-url-update", {
+          detail: { url: shareUrl },
+        }));
+      };
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      shareXs.forEach((shareX) => {
+        shareX.addEventListener("click", (event) => {
+          if (
+            !isMobileDevice ||
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          event.preventDefault();
+          const appUrl = shareX.dataset.appHref;
+          if (!appUrl) return;
+          window.location.href = appUrl;
+        }, listenerOptions);
+      });
+      const setShareMenuOpen = (open) => {
+        if (!(shareToggle instanceof HTMLButtonElement) || !(shareMenu instanceof HTMLElement)) return;
+        shareToggle.setAttribute("aria-expanded", String(open));
+        shareMenu.hidden = !open;
+        document.body.classList.toggle("share-menu-open", open);
+        if (open) {
+          window.dispatchEvent(new CustomEvent("share-url-update", {
+            detail: { url: getShareUrl().href },
+          }));
+        }
+      };
+      shareToggle?.addEventListener("click", () => {
+        setShareMenuOpen(shareToggle.getAttribute("aria-expanded") !== "true");
+      }, listenerOptions);
+      shareCopies.forEach((shareCopy) => {
+        shareCopy.addEventListener("click", async () => {
+          const language = root.dataset.language;
+          const dictionary = translations[language] ?? translations["zh-Hans"];
+          const shareUrl = getShareUrl(language);
+          try {
+            await navigator.clipboard.writeText(shareUrl.href);
+            shareCopy.textContent = dictionary.shareArticleCopied;
+            window.setTimeout(() => {
+              if (shareCopy.isConnected) {
+                const currentDictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+                shareCopy.textContent = currentDictionary.copyShareLink;
+              }
+            }, 1800);
+          } catch {
+            window.prompt(dictionary.shareArticleError, shareUrl.href);
+          }
+        }, listenerOptions);
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          !(event.target instanceof Element) ||
+          (!event.target.closest("[data-share-control]") && !shareMenu?.contains(event.target))
+        ) {
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+      const applyLanguage = (language) => {
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const requestedLanguage = language === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : language;
+        const effectiveLanguage = availableLanguages.includes(requestedLanguage)
+          ? requestedLanguage
+          : defaultLanguage;
+        const dictionary = translations[effectiveLanguage] ?? translations["zh-Hans"];
+        root.dataset.language = effectiveLanguage;
+        document.documentElement.lang = effectiveLanguage;
+        const localizedArticles = [...document.querySelectorAll(".localized-article")];
+        if (localizedArticles.length > 0) {
+          const selectedArticle =
+            localizedArticles.find(
+              (article) => article.lang.toLowerCase() === effectiveLanguage.toLowerCase(),
+            ) ??
+            localizedArticles.find((article) => article.lang === "zh-Hans") ??
+            localizedArticles.find((article) => article.lang === "zh") ??
+            localizedArticles[0];
+          localizedArticles.forEach((article) => {
+            article.hidden = article !== selectedArticle;
+          });
+        }
+        const localizedMetadata = root.dataset.localizedMetadata
+          ? JSON.parse(root.dataset.localizedMetadata)
+          : null;
+        const metadata = localizedMetadata?.[effectiveLanguage];
+        if (metadata) {
+          document.title = metadata.title;
+          document
+            .querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]')
+            .forEach((element) => {
+              element.content = metadata.description;
+            });
+          document
+            .querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]')
+            .forEach((element) => {
+              element.content = metadata.title;
+            });
+          if (metadata.image) {
+            document
+              .querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]')
+              .forEach((element) => {
+                element.content = new URL(metadata.image, window.location.origin).href;
+              });
+          }
+          if (metadata.imageAlt) {
+            document
+              .querySelectorAll('meta[property="og:image:alt"], meta[name="twitter:image:alt"]')
+              .forEach((element) => {
+                element.content = metadata.imageAlt;
+              });
+          }
+        }
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const value = dictionary[element.dataset.i18n];
+          if (value) element.textContent = value;
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAria];
+          if (value) element.setAttribute("aria-label", value);
+        });
+        if (tocToggle instanceof HTMLButtonElement) {
+          setArticleTocHidden(tocToggle.getAttribute("aria-pressed") === "true");
+        }
+        document.querySelectorAll("[data-i18n-alt]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAlt];
+          if (value) element.setAttribute("alt", value);
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nPlaceholder];
+          if (value) element.setAttribute("placeholder", value);
+        });
+        const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+        if (mobileMenuToggle) {
+          const label = mobileMenuToggle.getAttribute("aria-expanded") === "true"
+            ? dictionary.closeMobileMenu
+            : dictionary.openMobileMenu;
+          mobileMenuToggle.setAttribute("aria-label", label);
+        }
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete("lang");
+        const legacyLanguageHash = new URLSearchParams(currentUrl.hash.slice(1)).get("lang");
+        if (legacyLanguageHash) currentUrl.hash = "";
+        const canonical = document.querySelector('link[rel="canonical"]');
+        if (
+          root.dataset.pageType === "article" &&
+          root.dataset.shareLanguage &&
+          canonical instanceof HTMLLinkElement
+        ) {
+          currentUrl.pathname = new URL(canonical.href).pathname;
+        }
+        if (`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` !==
+          `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+          window.history.replaceState(window.history.state, "", currentUrl);
+        }
+        const openGraphUrl = document.querySelector('meta[property="og:url"]');
+        if (openGraphUrl instanceof HTMLMetaElement) {
+          openGraphUrl.content = new URL(currentUrl.pathname, window.location.origin).href;
+        }
+        const openGraphLocale = document.querySelector('meta[property="og:locale"]');
+        const socialLocales = {
+          "zh-Hans": "zh_CN",
+          "zh-Hant": "zh_TW",
+          en: "en_US",
+          ja: "ja_JP",
+          ko: "ko_KR",
+        };
+        if (openGraphLocale instanceof HTMLMetaElement) {
+          openGraphLocale.content = socialLocales[effectiveLanguage] ?? socialLocales["zh-Hans"];
+        }
+        const homeLink = document.querySelector("[data-home-link]");
+        if (homeLink instanceof HTMLAnchorElement) {
+          homeLink.href = withBase("/");
+        }
+        document.querySelectorAll("[data-post-href]").forEach((element) => {
+          if (!(element instanceof HTMLAnchorElement)) return;
+          const basePath = new URL(element.dataset.postHref, window.location.origin).pathname;
+          element.href = basePath;
+        });
+        updateShareUrl(effectiveLanguage);
+        languageSelect.value = effectiveLanguage;
+        root.dataset.languageReady = "true";
+        root.removeAttribute("data-language-pending");
+        document.dispatchEvent(new CustomEvent("site-language-change", {
+          detail: { language: effectiveLanguage },
+        }));
+      };
+      const currentUrl = new URL(window.location.href);
+      const requestedLanguage =
+        new URLSearchParams(currentUrl.hash.slice(1)).get("lang") ||
+        currentUrl.searchParams.get("lang") ||
+        root.dataset.shareLanguage;
+      const savedLanguage = localStorage.getItem("language-preference");
+      applyLanguage(requestedLanguage || savedLanguage || root.dataset.language);
+      languageSelect?.addEventListener("change", () => {
+        const language = languageSelect.value;
+        localStorage.setItem("language-preference", language);
+        applyLanguage(language);
+      }, listenerOptions);
+
+      const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+      const mobileNavBackdrop = document.querySelector("[data-mobile-nav-backdrop]");
+      const setMobileMenuOpen = (open) => {
+        document.body.classList.toggle("mobile-nav-open", open);
+        mobileMenuToggle?.setAttribute("aria-expanded", String(open));
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        mobileMenuToggle?.setAttribute(
+          "aria-label",
+          open ? dictionary.closeMobileMenu : dictionary.openMobileMenu,
+        );
+      };
+      mobileMenuToggle?.addEventListener("click", () => {
+        const open = !document.body.classList.contains("mobile-nav-open");
+        if (open) setShareMenuOpen(false);
+        setMobileMenuOpen(open);
+      }, listenerOptions);
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.target instanceof Element &&
+          !event.target.closest(".site-nav, [data-mobile-menu-toggle]")
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, listenerOptions);
+      window.addEventListener("scroll", (event) => {
+        if (
+          document.body.classList.contains("mobile-nav-open") &&
+          !(event.target instanceof Element && event.target.closest(".site-nav"))
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, { ...listenerOptions, capture: true, passive: true });
+      const closeMobileMenuOnScroll = () => {
+        if (document.body.classList.contains("mobile-nav-open")) {
+          setMobileMenuOpen(false);
+        }
+      };
+      window.addEventListener("wheel", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        capture: true,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("touchmove", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("click", () => {
+        setMobileMenuOpen(false);
+        setShareMenuOpen(false);
+      }, listenerOptions);
+      document.querySelectorAll(".site-nav a").forEach((link) => {
+        link.addEventListener("click", () => setMobileMenuOpen(false), listenerOptions);
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setMobileMenuOpen(false);
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+
+      document.querySelectorAll("pre").forEach((block) => {
+        const button = document.createElement("button");
+        button.className = "copy-code";
+        button.type = "button";
+        button.textContent = "复制";
+        button.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(
+            block.querySelector("code")?.innerText || block.innerText,
+          );
+          button.textContent = "已复制";
+          setTimeout(() => (button.textContent = "复制"), 1400);
+        }, listenerOptions);
+        block.appendChild(button);
+      });
+
+      document.querySelectorAll(".video-embed iframe").forEach((frame) => {
+        const width = Number(frame.getAttribute("width"));
+        const height = Number(frame.getAttribute("height"));
+        if (width > 0 && height > 0) {
+          frame.parentElement.style.setProperty(
+            "--video-ratio",
+            `${width} / ${height}`,
+          );
+          frame.parentElement.classList.toggle("portrait", width < height);
+          frame.parentElement.classList.toggle("square", width === height);
+        }
+
+        try {
+          const videoUrl = new URL(frame.src, window.location.href);
+          if (/(^|\.)youtube(?:-nocookie)?\.com$/.test(videoUrl.hostname)) {
+            videoUrl.searchParams.set("rel", "0");
+            videoUrl.searchParams.set("modestbranding", "1");
+            videoUrl.searchParams.set("playsinline", "1");
+            videoUrl.searchParams.set("iv_load_policy", "3");
+            frame.src = videoUrl.toString();
+          }
+        } catch {
+          // Leave embeds from other providers untouched.
+        }
+      });
+      })();
+    </script> <script type="module" src="/_astro/BaseLayout.astro_astro_type_script_index_0_lang.D6bboDWB.js"></script> </body> </html>
