@@ -1,0 +1,838 @@
+<!DOCTYPE html><html lang="en" data-language="en" data-default-language="zh-Hans" data-base-url="/" data-page-type="article" data-share-language="en" data-available-languages="[&#34;zh-Hans&#34;,&#34;en&#34;,&#34;ja&#34;,&#34;ko&#34;,&#34;zh-Hant&#34;]" data-localized-metadata="{&#34;en&#34;:{&#34;title&#34;:&#34;Visual editing: change every site setting without touching code · Hooleeas Blog&#34;,&#34;description&#34;:&#34;The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page.&#34;,&#34;image&#34;:&#34;/og/posts/en/astro-blog-admin-editing.png?v=13&#34;,&#34;imageAlt&#34;:&#34;Visual editing: change every site setting without touching code&#34;},&#34;ja&#34;:{&#34;title&#34;:&#34;ビジュアル編集：コードを知らなくても全設定が変えられる · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin の設定エディタは JSONC 設定をカードフォームに変えます。多言語フィールドは言語ごとに編集でき、画像フィールドにはプレビューがあり、保存ボタンを押してもページは微動だにしません。&#34;,&#34;image&#34;:&#34;/og/posts/ja/astro-blog-admin-editing.png?v=13&#34;,&#34;imageAlt&#34;:&#34;ビジュアル編集：コードを知らなくても全設定が変えられる&#34;},&#34;ko&#34;:{&#34;title&#34;:&#34;시각적 편집: 코드를 몰라도 모든 사이트 설정을 바꾸는 법 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin의 설정 편집기는 JSONC 설정을 카드 폼으로 바꿉니다. 다국어 필드는 언어별로 고칠 수 있고, 이미지 필드에는 미리보기가 있으며, 저장을 눌러도 페이지는 꿈쩍도 하지 않습니다.&#34;,&#34;image&#34;:&#34;/og/posts/ko/astro-blog-admin-editing.png?v=13&#34;,&#34;imageAlt&#34;:&#34;시각적 편집: 코드를 몰라도 모든 사이트 설정을 바꾸는 법&#34;},&#34;zh-Hans&#34;:{&#34;title&#34;:&#34;可视化编辑：不懂代码也能改全站设置 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin 的设置编辑器把 JSONC 配置变成卡片表单：多语言字段能逐个语言改，图片字段带预览，点保存页面纹丝不动。&#34;,&#34;image&#34;:&#34;/og/posts/zh-hans/astro-blog-admin-editing.png?v=13&#34;,&#34;imageAlt&#34;:&#34;可视化编辑：不懂代码也能改全站设置&#34;},&#34;zh-Hant&#34;:{&#34;title&#34;:&#34;可視化編輯：不懂程式碼也能改全站設定 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin 的設定編輯器把 JSONC 配置變成卡片表單：多語言欄位能逐個語言改，圖片欄位帶預覽，點保存頁面紋絲不動。&#34;,&#34;image&#34;:&#34;/og/posts/zh-hant/astro-blog-admin-editing.png?v=13&#34;,&#34;imageAlt&#34;:&#34;可視化編輯：不懂程式碼也能改全站設定&#34;}}"> <head><script>
+      (() => {
+        document.documentElement.dataset.languagePending = "true";
+        if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+          document.documentElement.dataset.navigationHoverSuppressed = "true";
+        }
+        const root = document.documentElement;
+        if (
+          root.dataset.pageType === "article" &&
+          window.matchMedia("(max-width: 980px)").matches
+        ) {
+          root.classList.add("toc-hidden");
+        }
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const cachedLanguage = localStorage.getItem("language-preference");
+        const normalizedCachedLanguage = cachedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : cachedLanguage;
+        const pageUrl = new URL(window.location.href);
+        const requestedLanguage =
+          new URLSearchParams(pageUrl.hash.slice(1)).get("lang") ??
+          pageUrl.searchParams.get("lang") ??
+          root.dataset.shareLanguage;
+        const normalizedRequestedLanguage = requestedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : requestedLanguage;
+        const hasRequestedLanguage = availableLanguages.includes(normalizedRequestedLanguage);
+        const hasCachedLanguage = availableLanguages.includes(normalizedCachedLanguage);
+        const systemLanguages = hasRequestedLanguage || hasCachedLanguage
+          ? []
+          : navigator.languages?.length
+            ? navigator.languages
+            : [navigator.language];
+        const systemLanguage = systemLanguages
+          .map((value) => value.toLowerCase().replaceAll("_", "-"))
+          .map((value) => {
+            const exact = availableLanguages.find((language) => language.toLowerCase() === value);
+            if (exact) return exact;
+            const directMatch = availableLanguages.find((language) =>
+              value.startsWith(`${language.toLowerCase()}-`),
+            );
+            if (directMatch) return directMatch;
+            if (value.startsWith("zh-")) {
+              const script = /-(hant|tw|hk|mo)(-|$)/i.test(value) ? "zh-Hant" : "zh-Hans";
+              return availableLanguages.includes(script) ? script : undefined;
+            }
+            return undefined;
+          })
+          .find(Boolean);
+        const language = hasRequestedLanguage
+          ? normalizedRequestedLanguage
+          : hasCachedLanguage
+          ? normalizedCachedLanguage
+          : systemLanguage ?? defaultLanguage;
+        if (hasRequestedLanguage && (pageUrl.hash || root.dataset.shareLanguage)) {
+          localStorage.setItem("language-preference", language);
+        }
+        document.documentElement.dataset.language = language;
+        document.documentElement.lang = language;
+        const savedTheme = localStorage.getItem("theme");
+        if (!savedTheme) {
+          const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          localStorage.setItem("theme", systemTheme);
+          document.documentElement.classList.toggle("dark", systemTheme === "dark");
+        }
+        const homePostView = localStorage.getItem("home-post-view");
+        document.documentElement.dataset.homePostView =
+          homePostView === "grid" ? "grid" : "list";
+        const markScrollRestoration = (root) => {
+          root.setAttribute("data-scroll-restoring", "");
+        };
+        const pauseCarousels = (root) => {
+          root.setAttribute("data-carousel-navigation", "");
+        };
+        const resumeCarousels = (root) => {
+          root.removeAttribute("data-carousel-navigation");
+        };
+        const resumeCarouselsAfterImagesDecode = async () => {
+          const root = document.documentElement;
+          const logos = new Map();
+          document
+            .querySelectorAll(
+              ".about-skills-marquee .creativity-set img, .creativity-marquee .creativity-set img, .creativity-mobile-marquee .creativity-set img",
+            )
+            .forEach((image) => {
+              if (image instanceof HTMLImageElement) {
+                logos.set(image.currentSrc || image.src, image);
+              }
+            });
+
+          await Promise.allSettled(
+            [...logos.values()].map((image) => image.decode()),
+          );
+          if (root !== document.documentElement) return;
+
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+          if (root === document.documentElement) {
+            resumeCarousels(root);
+          }
+        };
+        const hasCarousels = (document) =>
+          document.querySelector(".about-page, .home-visual .creativity-marquee");
+        const hasCarouselAtTarget = (url) => {
+          const path = new URL(url, window.location.href).pathname;
+          const base = (root.dataset.baseUrl || "/").replace(/\/+$/, "");
+          const sitePath = base && path.startsWith(`${base}/`) ? path.slice(base.length) : path;
+          const normalizedPath = sitePath.replace(/\/+$/, "");
+          return normalizedPath === "" || normalizedPath === "/" || normalizedPath === "/about";
+        };
+        const clearScrollRestoration = () => {
+          document.documentElement.removeAttribute("data-scroll-restoring");
+        };
+
+        markScrollRestoration(document.documentElement);
+        pauseCarousels(document.documentElement);
+        document.addEventListener("astro:before-preparation", (event) => {
+          if (hasCarousels(document) || hasCarouselAtTarget(event.to)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        document.addEventListener("astro:before-swap", (event) => {
+          event.newDocument.documentElement.dataset.languagePending = "true";
+          event.newDocument.documentElement.dataset.navigationGradientReady = "true";
+          if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+            event.newDocument.documentElement.dataset.navigationHoverSuppressed = "true";
+          }
+          markScrollRestoration(document.documentElement);
+          markScrollRestoration(event.newDocument.documentElement);
+          const currentHeader = document.querySelector(".site-header");
+          const currentCapsule = currentHeader?.querySelector(".header-inner");
+          delete window.navigationGradientStartRatio;
+          if (currentCapsule && currentHeader?.dataset.pageType !== "article") {
+            const currentWidth = currentCapsule.getBoundingClientRect().width;
+            const gradientTransform = getComputedStyle(
+              currentCapsule,
+              "::before",
+            ).transform;
+            const currentShift =
+              gradientTransform === "none"
+                ? 0
+                : new DOMMatrixReadOnly(gradientTransform).m41;
+            if (currentWidth > 0 && Number.isFinite(currentShift)) {
+              window.navigationGradientStartRatio =
+                0.5 + currentShift / currentWidth;
+            }
+          }
+          if (hasCarousels(document) || hasCarousels(event.newDocument)) {
+            pauseCarousels(document.documentElement);
+            pauseCarousels(event.newDocument.documentElement);
+          }
+        });
+        document.addEventListener("astro:after-swap", clearScrollRestoration);
+        document.addEventListener("astro:page-load", clearScrollRestoration, {
+          once: true,
+        });
+        document.addEventListener("astro:page-load", resumeCarouselsAfterImagesDecode);
+        window.addEventListener("pagehide", () => {
+          if (hasCarousels(document)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        window.addEventListener("pageshow", (event) => {
+          if (event.persisted) {
+            resumeCarouselsAfterImagesDecode();
+          }
+        });
+      })();
+    </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="none"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.QW52Ox2j.js"></script><script data-astro-rerun>
+      (() => {
+      const applySavedTheme = (root) => {
+        root.classList.toggle("dark", localStorage.getItem("theme") === "dark");
+      };
+      applySavedTheme(document.documentElement);
+      if (!window.themeSwapListenerInstalled) {
+        window.themeSwapListenerInstalled = true;
+        document.addEventListener("astro:before-swap", (event) => {
+          applySavedTheme(event.newDocument.documentElement);
+        });
+      }
+      })();
+    </script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page."><link rel="canonical" href="https://hooleeas.github.io/astro-blog-admin-editing/"><meta property="og:type" content="article"><meta property="og:site_name" content="Hooleeas"><meta property="og:locale" content="en_US"><meta property="og:title" content="Visual editing: change every site setting without touching code · Hooleeas Blog"><meta property="og:description" content="The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page."><meta property="og:url" content="https://hooleeas.github.io/astro-blog-admin-editing/en/"><meta property="og:image" content="https://hooleeas.github.io/og/posts/en/astro-blog-admin-editing.png?v=13"><meta property="og:image:alt" content="Visual editing: change every site setting without touching code"><meta name="twitter:image:alt" content="Visual editing: change every site setting without touching code"><meta property="og:image:width" content="1800"><meta property="og:image:height" content="600"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Visual editing: change every site setting without touching code · Hooleeas Blog"><meta name="twitter:description" content="The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page."><meta name="twitter:image" content="https://hooleeas.github.io/og/posts/en/astro-blog-admin-editing.png?v=13"><link rel="icon" href="/icon/favicon.ico?v=8" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" href="/icon/icon_16x16.png?v=8" sizes="16x16"><link rel="icon" type="image/png" href="/icon/icon_32x32.png?v=8" sizes="32x32"><link rel="icon" type="image/png" href="/icon/icon_48x48.png?v=8" sizes="48x48"><link rel="icon" type="image/png" href="/icon/icon_512x512.png?v=8" sizes="512x512"><link rel="apple-touch-icon" sizes="180x180" href="/icon/icon_180x180.png?v=8"><link rel="manifest" href="/icon/site.webmanifest?v=8"><title>Visual editing: change every site setting without touching code · Hooleeas Blog</title><link rel="stylesheet" href="/_astro/_slug_.DIaYWNEb.css"></head> <body> <svg class="glass-filter-definitions" aria-hidden="true" focusable="false"> <filter id="liquid-glass-refraction" x="-20%" y="-20%" width="140%" height="140%"> <feTurbulence type="fractalNoise" baseFrequency="0.035 0.045" numOctaves="1" seed="7" result="glass-noise"></feTurbulence> <feDisplacementMap in="SourceGraphic" in2="glass-noise" scale="2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap> </filter> </svg> <header class="site-header" data-page-type="article"> <div class="container header-inner"> <a class="brand" href="/" data-home-link data-i18n="navigationHome"> 主页 </a> <div class="nav-controls"> <button class="toc-toggle" type="button" aria-label="隐藏文章目录" aria-pressed="false" data-toc-toggle data-i18n-aria="hideArticleContents"><img class="toc-toggle-icon" src="https://developer.apple.com/tutorials/images/com.apple.HIG/jp/icons-symbols-meaning-find@2x.png" alt="" aria-hidden="true"></button> <div class="share-control" data-share-control> <button class="share-trigger" type="button" aria-label="分享页面" aria-expanded="false" aria-controls="page-share-menu" data-share-toggle data-i18n-aria="shareMenuLabel"> <img class="share-icon" src="https://developer.apple.com/tutorials/images/com.apple.HIG/jp/icons-symbols-meaning-sharing@2x.png" alt="" aria-hidden="true"> </button> <div class="share-menu" id="page-share-menu" role="menu" hidden> <div class="share-qr-section" role="group"> <strong class="share-menu-heading" data-i18n="shareMenuHeading">分享此页面</strong> <canvas class="share-qr-code" width="160" height="160" role="img" aria-label="页面二维码" data-i18n-aria="shareQrCode" data-share-qr-code></canvas> <span class="share-qr-label" data-i18n="shareQrCode">扫码访问此页面</span> </div> <a class="share-menu-item" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" role="menuitem" data-share-x data-i18n="shareToX">分享到 X</a> <button class="share-menu-item" type="button" role="menuitem" data-share-copy data-i18n="copyShareLink">复制链接</button> </div> </div> <div class="language-picker"> <span class="language-glyph" aria-hidden="true"><span>文</span><small>A</small></span> <select class="language-select" aria-label="选择语言" data-i18n-aria="languagePicker" data-language-select> <option value="zh-Hans">简体中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh-Hant">繁體中文</option> </select> </div> <button class="toggle" aria-label="Toggle theme" data-i18n-aria="themeToggle" data-theme-toggle>
+◐
+</button> </div> <button class="mobile-menu-toggle" type="button" aria-label="打开导航菜单" aria-expanded="false" data-mobile-menu-toggle> <span></span><span></span><span></span> </button> </div> <nav class="site-nav"> <div class="nav-links"> <a href="/archive/" data-i18n="archive">文章归档</a><a href="/notes/" data-i18n="notes">随记</a><a href="/charity/" data-i18n="services">公益服务</a><a href="/about/" data-i18n="about">关于</a> </div> </nav> </header> <div class="mobile-nav-backdrop" data-mobile-nav-backdrop></div> <main> <div class="container"><section class="localized-article" lang="en"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-02 · Projects</div><h1 class="page-title">Visual editing: change every site setting without touching code</h1><p class="lead">The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page.</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>Admin Panel</span><span>Editor</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="Visual editing: change every site setting without touching code" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="en"><div class="prose"><p>All of the blog’s site settings live in a few JSONC files: homepage modules, navigation, about, subscriptions, services — hundreds of fields, many of them multilingual. Editing those files directly is error-prone, and you cannot see what a change will look like. The variable editor in astro-blog-admin renders the configuration as card forms: you see human labels like “Subtitle” and “Link URL”, never raw JSON keys.</p>
+<h2 id="what-the-editor-looks-like">What the editor looks like</h2>
+<h3 id="card-forms">Card forms</h3>
+<p>Configuration is split into cards by structure: one card per object, arrays as expandable entries, strings as inputs, booleans as switches, colors as a text field paired with a swatch. Adding a list item opens a dialog asking for its name first, instead of inserting an empty row; icon-grid lists (like carousel logos) get their own dedicated edit dialog.</p>
+<h3 id="image-fields-with-previews">Image fields with previews</h3>
+<p>Every image-URL field shows its preview above the field’s label, updating live as you type and hiding itself if the image fails to load. Icons and avatars preview in a 1:1 square with the whole image fitted inside, never cropped; regular images get a wide preview. You see the picture before you commit to it, so a mistyped URL is obvious at a glance.</p>
+<h2 id="editing-multilingual-fields">Editing multilingual fields</h2>
+<h3 id="the-edit-language-capsule">The edit-language capsule</h3>
+<p>Many fields hold not one sentence but five — one per language. At the top of the editor sits an “Edit language” capsule, the very same component as the post editor’s: tap to switch, long-press and drag to pick a language. Whichever language is selected, every multilingual field on the page shows and edits only that language, and never overwrites the other translations.</p>
+<h3 id="switching-never-refreshes-or-jitters">Switching never refreshes or jitters</h3>
+<p>Changing language swaps field values in place — no page rebuild, no scroll jump. Saving behaves the same way: it records the file’s new version id and leaves the page exactly as it was, reporting success or failure through a small in-page toast. There is not a single native dialog anywhere in the admin that makes you click “OK”.</p>
+<h2 id="saving-rules">Saving rules</h2>
+<p>The editor reads the source files from the repository and writes back through the API with version (sha) checking: if the file changed elsewhere, the save is refused with a prompt to reload instead of silently overwriting. One trade-off is worth stating plainly: visual saves drop the comments in JSONC files, which is why the editor keeps a “raw text” tab for hand-editing when comments matter.</p>
+<p>Next: the admin’s other half — the image bed, and how one codebase runs on two platforms at once.</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#what-the-editor-looks-like" data-depth="2" style="padding-left: 14px"><span>What the editor looks like</span></a><a href="#card-forms" data-depth="3" style="padding-left: 28px"><span>Card forms</span></a><a href="#image-fields-with-previews" data-depth="3" style="padding-left: 28px"><span>Image fields with previews</span></a><a href="#editing-multilingual-fields" data-depth="2" style="padding-left: 14px"><span>Editing multilingual fields</span></a><a href="#the-edit-language-capsule" data-depth="3" style="padding-left: 28px"><span>The edit-language capsule</span></a><a href="#switching-never-refreshes-or-jitters" data-depth="3" style="padding-left: 28px"><span>Switching never refreshes or jitters</span></a><a href="#saving-rules" data-depth="2" style="padding-left: 14px"><span>Saving rules</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="ja"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-02 · プロジェクト紹介</div><h1 class="page-title">ビジュアル編集：コードを知らなくても全設定が変えられる</h1><p class="lead">astro-blog-admin の設定エディタは JSONC 設定をカードフォームに変えます。多言語フィールドは言語ごとに編集でき、画像フィールドにはプレビューがあり、保存ボタンを押してもページは微動だにしません。</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>管理画面</span><span>エディタ</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="ビジュアル編集：コードを知らなくても全設定が変えられる" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="ja"><div class="prose"><p>ブログのサイト設定はすべて数個の JSONC ファイルの中にあります。トップページのモジュール、ナビゲーション、About、サブスクリプション、サービス……フィールドは数百個、その多くが多言語対応。ファイルを直接編集するのは間違いのもとですし、変えた結果がどう見えるかも分かりません。astro-blog-admin の変数エディタは、この設定をカードフォームとして描画します。目に入るのは JSON のキー名ではなく、「サブタイトル」「リンク URL」のような人間のためのラベルです。</p>
+<h2 id="エディタの見た目">エディタの見た目</h2>
+<h3 id="カード式フォーム">カード式フォーム</h3>
+<p>設定は構造に沿って自動でカードに分かれます。オブジェクトごとに 1 枚のカード、配列は展開できる項目の列、文字列は入力欄、真偽値はスイッチ、色はテキスト欄とスウォッチの二重入力。新規項目の追加では、空の行を先に入れるのではなく、まずダイアログで名前を入力させます。アイコングリッド系のリスト（カルーセルのロゴなど）には専用の編集ダイアログがあります。</p>
+<h3 id="画像フィールドにはプレビュー">画像フィールドにはプレビュー</h3>
+<p>画像 URL のフィールドはすべて、ラベルの上にプレビューを表示します。入力に合わせてリアルタイムに更新され、読み込みに失敗すれば自動で隠れます。アイコンとアバターのプレビューは 1:1 の正方形に全体を収めて切り取らず、通常の画像は横長のプレビューです。差し替える前に絵が見えるので、URL の貼り間違いは一目で分かります。</p>
+<h2 id="多言語フィールドの編集方法">多言語フィールドの編集方法</h2>
+<h3 id="編集言語カプセル">編集言語カプセル</h3>
+<p>多くのフィールドの値は 1 文ではなく、5 言語分の文言です。エディタ上部には「編集言語」カプセルがあり、記事エディタとまったく同じコンポーネントです。タップで切替、長押しでドラッグして言語を選べます。選んだ言語に合わせて、ページ上のすべての多言語フィールドはその言語だけを表示・編集し、他の言語の訳文を上書きすることは決してありません。</p>
+<h3 id="切替でリフレッシュも揺れもなし">切替でリフレッシュも揺れもなし</h3>
+<p>言語切替はフィールドの値をその場で差し替えるだけ——ページの再構築もスクロールの飛びもありません。保存も同じです。新しいファイルバージョンを記録するだけでページ自体は一切リフレッシュされず、結果は画面内の小さなトーストで成功・失敗を知らせます。管理画面のどこにも、「OK」を押させるネイティブダイアログは存在しません。</p>
+<h2 id="保存のルール">保存のルール</h2>
+<p>エディタはリポジトリのソースファイルを読み、保存時は API 経由でバージョン（sha）を検証して書き戻します。ファイルが別の場所で変更されていれば、黙って上書きせず、再読み込みを促して保存を止めます。1 つ正直に言うべきトレードオフもあります。ビジュアル保存では JSONC ファイル内のコメントが失われるため、コメントが必要なときのために「生テキスト」タブを残し、手編集に戻れるようにしています。</p>
+<p>次回はこの管理画面のもう半分——画像ホスティングと、1 つのコードベースを 2 つのプラットフォームで動かすデプロイ方式です。</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#エディタの見た目" data-depth="2" style="padding-left: 14px"><span>エディタの見た目</span></a><a href="#カード式フォーム" data-depth="3" style="padding-left: 28px"><span>カード式フォーム</span></a><a href="#画像フィールドにはプレビュー" data-depth="3" style="padding-left: 28px"><span>画像フィールドにはプレビュー</span></a><a href="#多言語フィールドの編集方法" data-depth="2" style="padding-left: 14px"><span>多言語フィールドの編集方法</span></a><a href="#編集言語カプセル" data-depth="3" style="padding-left: 28px"><span>編集言語カプセル</span></a><a href="#切替でリフレッシュも揺れもなし" data-depth="3" style="padding-left: 28px"><span>切替でリフレッシュも揺れもなし</span></a><a href="#保存のルール" data-depth="2" style="padding-left: 14px"><span>保存のルール</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="ko"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-02 · 프로젝트 소개</div><h1 class="page-title">시각적 편집: 코드를 몰라도 모든 사이트 설정을 바꾸는 법</h1><p class="lead">astro-blog-admin의 설정 편집기는 JSONC 설정을 카드 폼으로 바꿉니다. 다국어 필드는 언어별로 고칠 수 있고, 이미지 필드에는 미리보기가 있으며, 저장을 눌러도 페이지는 꿈쩍도 하지 않습니다.</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>관리 화면</span><span>편집기</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="시각적 편집: 코드를 몰라도 모든 사이트 설정을 바꾸는 법" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="ko"><div class="prose"><p>블로그의 사이트 설정은 전부 JSONC 파일 몇 개 안에 있습니다. 홈페이지 모듈, 내비게이션, 소개, 구독, 서비스…… 필드가 수백 개에 그중 다수가 다국어입니다. 파일을 직접 고치는 건 실수하기 쉽고, 고친 결과가 어떻게 보일지도 알 수 없습니다. astro-blog-admin의 변수 편집기는 이 설정을 카드 폼으로 그려 줍니다. 눈에 들어오는 것은 JSON 키 이름이 아니라 “부제”, “링크 주소” 같은 사람을 위한 라벨입니다.</p>
+<h2 id="편집기의-모습">편집기의 모습</h2>
+<h3 id="카드식-폼">카드식 폼</h3>
+<p>설정은 구조를 따라 자동으로 카드로 나뉩니다. 객체마다 카드 한 장, 배열은 펼칠 수 있는 항목들, 문자열은 입력란, 불리언은 스위치, 색상은 텍스트 칸과 색상 견본의 이중 입력. 목록 항목을 추가할 때는 빈 행부터 넣지 않고 먼저 대화 상자로 이름을 입력하게 합니다. 아이콘 그리드 류의 목록(캐러셀 로고 등)에는 전용 편집 대화 상자가 있습니다.</p>
+<h3 id="미리보기가-있는-이미지-필드">미리보기가 있는 이미지 필드</h3>
+<p>이미지 주소 필드는 모두 필드 라벨 위에 미리보기를 표시하고, 입력하는 대로 실시간으로 갱신되며, 불러오기에 실패하면 스스로 숨습니다. 아이콘과 아바타의 미리보기는 1:1 정사각형에 전체를 잘리지 않게 담고, 일반 이미지는 가로로 긴 미리보기를 씁니다. 바꾸기 전에 그림이 보이니 주소를 잘못 붙여 넣어도 한눈에 알 수 있습니다.</p>
+<h2 id="다국어-필드-편집법">다국어 필드 편집법</h2>
+<h3 id="편집-언어-캡슐">편집 언어 캡슐</h3>
+<p>많은 필드의 값은 한 문장이 아니라 다섯 언어의 문구입니다. 편집기 위에는 “편집 언어” 캡슐이 있고, 글 편집기의 것과 완전히 같은 컴포넌트입니다. 눌러서 전환하고, 길게 눌러 드래그로 언어를 고릅니다. 어떤 언어를 고르든 페이지의 모든 다국어 필드는 그 언어만 보여 주고 고치며, 다른 언어의 번역문을 덮어쓰는 일은 결코 없습니다.</p>
+<h3 id="전환해도-새로고침도-흔들림도-없다">전환해도 새로고침도 흔들림도 없다</h3>
+<p>언어 전환은 필드 값을 그 자리에서 바꿀 뿐, 페이지를 다시 만들지도 스크롤이 튀지도 않습니다. 저장도 마찬가지입니다. 파일의 새 버전 번호를 기록할 뿐 페이지 자체는 새로고침되지 않고, 결과는 화면 안의 작은 알림으로 성공과 실패를 전합니다. 관리 화면 어디에도 “확인”을 눌러야 하는 시스템 대화 상자는 없습니다.</p>
+<h2 id="저장-규칙">저장 규칙</h2>
+<p>편집기는 저장소의 원본 파일을 읽고, 저장할 때는 API를 통해 버전(sha)을 검증하며 다시 씁니다. 파일이 다른 곳에서 바뀌어 있으면 조용히 덮어쓰지 않고, 새로고침을 권하며 저장을 막습니다. 솔직히 말해야 할 트레이드오프도 하나 있습니다. 시각적 저장은 JSONC 파일 속 주석을 지워 버리므로, 주석이 필요할 때 손으로 고칠 수 있도록 “원문 텍스트” 탭을 남겨 두었습니다.</p>
+<p>다음 글에서는 이 관리 화면의 나머지 절반인 이미지 호스팅과, 하나의 코드베이스를 두 플랫폼에서 동시에 돌리는 배포 방식을 다룹니다.</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#편집기의-모습" data-depth="2" style="padding-left: 14px"><span>편집기의 모습</span></a><a href="#카드식-폼" data-depth="3" style="padding-left: 28px"><span>카드식 폼</span></a><a href="#미리보기가-있는-이미지-필드" data-depth="3" style="padding-left: 28px"><span>미리보기가 있는 이미지 필드</span></a><a href="#다국어-필드-편집법" data-depth="2" style="padding-left: 14px"><span>다국어 필드 편집법</span></a><a href="#편집-언어-캡슐" data-depth="3" style="padding-left: 28px"><span>편집 언어 캡슐</span></a><a href="#전환해도-새로고침도-흔들림도-없다" data-depth="3" style="padding-left: 28px"><span>전환해도 새로고침도 흔들림도 없다</span></a><a href="#저장-규칙" data-depth="2" style="padding-left: 14px"><span>저장 규칙</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="zh-Hans"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-02 · 项目介绍</div><h1 class="page-title">可视化编辑：不懂代码也能改全站设置</h1><p class="lead">astro-blog-admin 的设置编辑器把 JSONC 配置变成卡片表单：多语言字段能逐个语言改，图片字段带预览，点保存页面纹丝不动。</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>管理后台</span><span>编辑器</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="可视化编辑：不懂代码也能改全站设置" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="zh-Hans"><div class="prose"><p>博客的全站设置都在几个 JSONC 文件里：主页模块、导航、关于、订阅、服务……字段几百个，还带多语言。直接改文件既容易写错，也看不出改完长什么样。astro-blog-admin 的变量编辑器把这些配置渲染成卡片表单——你看到的是“子标题”“链接地址”这样的中文标签，而不是 JSON 的键名。</p>
+<h2 id="编辑器长什么样">编辑器长什么样</h2>
+<h3 id="卡片式表单">卡片式表单</h3>
+<p>配置按结构自动分卡：一个对象一张卡，数组是一条条可展开的条目，字符串是输入框，布尔值是开关，颜色是文本框加色块双输入。新增列表项会先弹窗让你把名字填好，而不是先塞一条空数据进去；图标网格类的列表（比如轮播标志）有专门的编辑弹窗。</p>
+<h3 id="图片字段带预览">图片字段带预览</h3>
+<p>凡是图片地址字段，预览图显示在字段子标题的上方，输入时实时更新，加载失败自动隐藏。图标和头像类的预览是 1:1 方图、完整装入不裁剪；普通图片是宽幅预览。换图之前先看到图，手滑贴错地址一眼就能发现。</p>
+<h2 id="多语言字段怎么编辑">多语言字段怎么编辑</h2>
+<h3 id="编辑语言胶囊">编辑语言胶囊</h3>
+<p>很多字段的值不是一句话，而是五种语言五份文案。编辑器顶部有一条「编辑语言」胶囊，和文章编辑器里的是同一套组件：点按切换、长按可以拖动选语言。选中哪个语言，页面上所有多语言字段就只显示和修改那个语言，绝不覆写其他语言的译文。</p>
+<h3 id="切换不刷新不抖动">切换不刷新、不抖动</h3>
+<p>切换语言只就地更换字段的值，页面不重建、不滚动。点保存也是如此：保存只把新的文件版本号记下来，页面本身不刷新、不跳动，结果用站内的小提示条告知成功或失败——全站没有任何需要你点「确定」的系统弹窗。</p>
+<h2 id="保存的规矩">保存的规矩</h2>
+<p>编辑器读的是仓库里的源文件，保存时经 API 写回并校验版本（sha）：如果文件在别处被改过，保存会被拦下并提示刷新，而不是默默覆盖。还有一个取舍要说清楚：可视化保存会丢掉 JSONC 文件里的注释，所以编辑器保留了「原始文本」页签，需要注释时可以切回去手改。</p>
+<p>下一篇是这个后台的另一半：图床，以及同一套代码同时跑在两个平台上的部署方式。</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#编辑器长什么样" data-depth="2" style="padding-left: 14px"><span>编辑器长什么样</span></a><a href="#卡片式表单" data-depth="3" style="padding-left: 28px"><span>卡片式表单</span></a><a href="#图片字段带预览" data-depth="3" style="padding-left: 28px"><span>图片字段带预览</span></a><a href="#多语言字段怎么编辑" data-depth="2" style="padding-left: 14px"><span>多语言字段怎么编辑</span></a><a href="#编辑语言胶囊" data-depth="3" style="padding-left: 28px"><span>编辑语言胶囊</span></a><a href="#切换不刷新不抖动" data-depth="3" style="padding-left: 28px"><span>切换不刷新、不抖动</span></a><a href="#保存的规矩" data-depth="2" style="padding-left: 14px"><span>保存的规矩</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="zh-Hant"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-02 · 項目介紹</div><h1 class="page-title">可視化編輯：不懂程式碼也能改全站設定</h1><p class="lead">astro-blog-admin 的設定編輯器把 JSONC 配置變成卡片表單：多語言欄位能逐個語言改，圖片欄位帶預覽，點保存頁面紋絲不動。</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>管理後台</span><span>編輯器</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="可視化編輯：不懂程式碼也能改全站設定" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="zh-Hant"><div class="prose"><p>部落格的全站設定都在幾個 JSONC 檔案裡：主頁模組、導航、關於、訂閱、服務……欄位幾百個，還帶多語言。直接改檔案既容易寫錯，也看不出改完長什麼樣。astro-blog-admin 的變量編輯器把這些配置渲染成卡片表單——你看到的是「子標題」「連結地址」這樣的中文標籤，而不是 JSON 的鍵名。</p>
+<h2 id="編輯器長什麼樣">編輯器長什麼樣</h2>
+<h3 id="卡片式表單">卡片式表單</h3>
+<p>配置按結構自動分卡：一個物件一張卡，陣列是一條條可展開的條目，字串是輸入框，布林值是開關，顏色是文字框加色塊雙輸入。新增列表項會先彈窗讓你把名字填好，而不是先塞一條空資料進去；圖標網格類的列表（比如輪播標誌）有專門的編輯彈窗。</p>
+<h3 id="圖片欄位帶預覽">圖片欄位帶預覽</h3>
+<p>凡是圖片地址欄位，預覽圖顯示在欄位子標題的上方，輸入時即時更新，載入失敗自動隱藏。圖標和頭像類的預覽是 1:1 方圖、完整裝入不裁剪；普通圖片是寬幅預覽。換圖之前先看到圖，手滑貼錯地址一眼就能發現。</p>
+<h2 id="多語言欄位怎麼編輯">多語言欄位怎麼編輯</h2>
+<h3 id="編輯語言膠囊">編輯語言膠囊</h3>
+<p>很多欄位的值不是一句話，而是五種語言五份文案。編輯器頂部有一條「編輯語言」膠囊，和文章編輯器裡的是同一套組件：點按切換、長按可以拖動選語言。選中哪個語言，頁面上所有多語言欄位就只顯示和修改那個語言，絕不覆寫其他語言的譯文。</p>
+<h3 id="切換不刷新不抖動">切換不刷新、不抖動</h3>
+<p>切換語言只就地更換欄位的值，頁面不重建、不捲動。點保存也是如此：保存只把新的檔案版本號記下來，頁面本身不刷新、不跳動，結果用站內的小提示條告知成功或失敗——全站沒有任何需要你點「確定」的系統彈窗。</p>
+<h2 id="保存的規矩">保存的規矩</h2>
+<p>編輯器讀的是倉庫裡的源檔案，保存時經 API 寫回並校驗版本（sha）：如果檔案在別處被改過，保存會被攔下並提示刷新，而不是默默覆蓋。還有一個取捨要說清楚：可視化保存會丟掉 JSONC 檔案裡的註釋，所以編輯器保留了「原始文字」頁籤，需要註釋時可以切回去手改。</p>
+<p>下一篇是這個後台的另一半：圖床，以及同一套程式碼同時跑在兩個平台上的部署方式。</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#編輯器長什麼樣" data-depth="2" style="padding-left: 14px"><span>編輯器長什麼樣</span></a><a href="#卡片式表單" data-depth="3" style="padding-left: 28px"><span>卡片式表單</span></a><a href="#圖片欄位帶預覽" data-depth="3" style="padding-left: 28px"><span>圖片欄位帶預覽</span></a><a href="#多語言欄位怎麼編輯" data-depth="2" style="padding-left: 14px"><span>多語言欄位怎麼編輯</span></a><a href="#編輯語言膠囊" data-depth="3" style="padding-left: 28px"><span>編輯語言膠囊</span></a><a href="#切換不刷新不抖動" data-depth="3" style="padding-left: 28px"><span>切換不刷新、不抖動</span></a><a href="#保存的規矩" data-depth="2" style="padding-left: 14px"><span>保存的規矩</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section></div><script type="module">let m;const h=()=>{m?.abort(),m=new AbortController;const{signal:g}=m,w=document.documentElement.dataset.language||"zh-Hans",l=document.querySelector(`.localized-article[lang="${w}"]`)??document.querySelector('.localized-article[lang="zh-Hans"]')??document.querySelector('.localized-article[lang="zh"]')??document.querySelector(".localized-article"),c=[...l?.querySelectorAll(".toc a")??[]],f=c.map(t=>l?.querySelector(t.getAttribute("href")||"")).filter(t=>t!==null);c.forEach(t=>{t.addEventListener("click",e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;const n=l?.querySelector(t.getAttribute("href")||"");n&&(e.preventDefault(),window.history.pushState(window.history.state,"",t.hash),n.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"start"}))},{signal:g})});let r="",s=0;const p=()=>{const t=document.querySelector(".site-header")?.getBoundingClientRect().bottom??0,e=Math.max(t+32,window.innerHeight*.25);let n=f[0];f.forEach(o=>{o.getBoundingClientRect().top<=e&&(n=o)});const y=n?.id||"";if(y===r)return;r=y,c.forEach(o=>{o.classList.toggle("active",decodeURIComponent(o.hash.slice(1))===r)});const d=c.find(o=>decodeURIComponent(o.hash.slice(1))===r),u=d?.closest(".toc");if(!d||!u)return;const a=d.getBoundingClientRect(),i=u.getBoundingClientRect(),b=a.top<i.top?a.top-i.top:a.bottom>i.bottom?a.bottom-i.bottom:0;b&&(u.scrollTop+=b)};p(),window.addEventListener("scroll",()=>{s||(s=requestAnimationFrame(()=>{s=0,p()}))},{passive:!0,signal:g})};document.addEventListener("astro:page-load",h);document.addEventListener("site-language-change",h);h();</script> </main> <footer> <div class="container">
+© 2026 Hooleeas </div> </footer> <script type="application/json" id="site-translations">{"zh-Hans":{"all":"全部","thisMonth":"本月发布","popular":"热门文章","list":"列表","grid":"网格","learnMore":"了解详细","languagePicker":"选择语言","themeToggle":"切换主题","openMobileMenu":"打开导航菜单","closeMobileMenu":"关闭导航菜单","showArticleContents":"显示文章目录","hideArticleContents":"隐藏文章目录","navigationHome":"主页","articleContents":"文章目录","articleTags":"文章标签","shareMenuLabel":"分享页面","shareMenuHeading":"分享此页面","shareQrCode":"扫码访问此页面","shareToX":"分享到 X","copyShareLink":"复制链接","shareArticleCopied":"链接已复制","shareArticleError":"无法自动复制链接，请手动复制下方地址。","articleShareTitle":"喜欢这篇文章？分享给更多人","articleShareDescription":"扫码打开文章，或将链接分享给朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果这篇文章对你有所帮助，欢迎支持我的创作。","donationBinance":"币安","donationWechat":"微信","donationAlipay":"支付宝","pagination":"文章分页","previousPage":"上一页","nextPage":"下一页","archive":"文章归档","notes":"随记","services":"公益服务","about":"关于","creativity":"Apple 订阅","creativityAriaLabel":"站长提供实惠Apple订阅共享服务","siteDays":"建站天数","sitePosts":"文章总数","siteWords":"全站字数","noPosts":"暂时还没有文章。","noPostsDescription":"新的内容正在准备中，欢迎稍后再来。","profileStats":"站点统计","featureSubtitle":"探索技术 创造可能","profile":"一名独立开发者，专注于技术探索与开源分享"},"zh-Hant":{"all":"全部","thisMonth":"本月發布","popular":"熱門文章","list":"列表","grid":"網格","learnMore":"了解詳情","languagePicker":"選擇語言","themeToggle":"切換主題","openMobileMenu":"開啟導覽選單","closeMobileMenu":"關閉導覽選單","showArticleContents":"顯示文章目錄","hideArticleContents":"隱藏文章目錄","navigationHome":"首頁","articleContents":"文章目錄","articleTags":"文章標籤","shareMenuLabel":"分享頁面","shareMenuHeading":"分享此頁面","shareQrCode":"掃描 QR Code 分享此頁面","shareToX":"分享到 X","copyShareLink":"複製連結","shareArticleCopied":"連結已複製","shareArticleError":"無法自動複製連結，請手動複製下方網址。","articleShareTitle":"喜歡這篇文章嗎？分享給更多人","articleShareDescription":"掃描 QR Code 開啟文章，或將連結分享給朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果這篇文章對你有所幫助，歡迎支持我的創作。","donationBinance":"幣安","donationWechat":"微信","donationAlipay":"支付寶","pagination":"文章分頁","previousPage":"上一頁","nextPage":"下一頁","archive":"文章歸檔","notes":"隨記","services":"公益服務","about":"關於","creativity":"Apple 訂閱","creativityAriaLabel":"站長提供實惠的 Apple 訂閱共享服務","siteDays":"建站天數","sitePosts":"文章總數","siteWords":"全站字數","noPosts":"暫時還沒有文章。","noPostsDescription":"新內容正在準備中，歡迎稍後再來。","profileStats":"網站統計","featureSubtitle":"探索技術，創造可能","profile":"一名獨立開發者，專注於技術探索與開源分享"},"en":{"all":"All","thisMonth":"This month","popular":"Popular","list":"List","grid":"Grid","learnMore":"Learn more","languagePicker":"Select language","themeToggle":"Toggle theme","openMobileMenu":"Open navigation menu","closeMobileMenu":"Close navigation menu","showArticleContents":"Show article contents","hideArticleContents":"Hide article contents","navigationHome":"Home","articleContents":"Contents","articleTags":"Article tags","shareMenuLabel":"Share this page","shareMenuHeading":"Share this page","shareQrCode":"Scan to open this page","shareToX":"Share on X","copyShareLink":"Copy link","shareArticleCopied":"Link copied","shareArticleError":"Could not copy the link automatically. Please copy the URL below.","articleShareTitle":"Enjoyed this article? Share it with others","articleShareDescription":"Scan the QR code to open the article, or share the link with a friend.","articleDonationTitle":"Support the author","articleDonationDescription":"If you found this article helpful, consider supporting my work.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"Article pagination","previousPage":"Previous","nextPage":"Next","archive":"Archive","notes":"Notes","services":"Charity","about":"About","creativity":"Apple Subscriptions","creativityAriaLabel":"Affordable Apple subscription sharing services offered by the site owner","siteDays":"Days online","sitePosts":"Articles","siteWords":"Words","noPosts":"No articles yet.","noPostsDescription":"New content is on the way. Please check back soon.","profileStats":"Site statistics","featureSubtitle":"Explore technology and creative possibilities","profile":"An independent developer focused on exploring technology and sharing open source"},"ja":{"all":"すべて","thisMonth":"今月の記事","popular":"人気の記事","list":"リスト","grid":"グリッド","learnMore":"詳しく見る","languagePicker":"言語を選択","themeToggle":"テーマを切り替え","openMobileMenu":"ナビゲーションメニューを開く","closeMobileMenu":"ナビゲーションメニューを閉じる","showArticleContents":"目次を表示","hideArticleContents":"目次を隠す","navigationHome":"ホーム","articleContents":"目次","articleTags":"記事のタグ","shareMenuLabel":"ページを共有","shareMenuHeading":"このページを共有","shareQrCode":"QRコードを読み取ってページを共有","shareToX":"X で共有","copyShareLink":"リンクをコピー","shareArticleCopied":"リンクをコピーしました","shareArticleError":"リンクを自動でコピーできません。下のURLを手動でコピーしてください。","articleShareTitle":"この記事が気に入ったら、ぜひ共有してください","articleShareDescription":"QRコードで記事を開くか、リンクを友達に共有できます。","articleDonationTitle":"作者を応援する","articleDonationDescription":"この記事がお役に立てたら、創作へのご支援をお願いします。","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"記事のページ送り","previousPage":"前へ","nextPage":"次へ","archive":"アーカイブ","notes":"日々のメモ","services":"サービス","about":"このサイトについて","creativity":"Apple サブスクリプション","creativityAriaLabel":"サイト管理者が提供するお得な Apple サブスクリプション共有サービス","siteDays":"運営日数","sitePosts":"記事数","siteWords":"総単語数","noPosts":"記事はまだありません。","noPostsDescription":"新しい記事を準備中です。また後ほどご覧ください。","profileStats":"サイト統計","featureSubtitle":"テクノロジーを探求し、新たな可能性を創造する","profile":"技術の探求とオープンソースの共有に取り組む個人開発者"},"ko":{"all":"전체","thisMonth":"이번 달","popular":"인기 글","list":"목록","grid":"그리드","learnMore":"자세히 보기","languagePicker":"언어 선택","themeToggle":"테마 전환","openMobileMenu":"탐색 메뉴 열기","closeMobileMenu":"탐색 메뉴 닫기","showArticleContents":"목차 표시","hideArticleContents":"목차 숨기기","navigationHome":"홈","articleContents":"목차","articleTags":"글 태그","shareMenuLabel":"페이지 공유","shareMenuHeading":"이 페이지 공유","shareQrCode":"QR 코드를 스캔해 페이지 공유","shareToX":"X에 공유","copyShareLink":"링크 복사","shareArticleCopied":"링크가 복사되었습니다","shareArticleError":"링크를 자동으로 복사할 수 없습니다. 아래 URL을 직접 복사해 주세요.","articleShareTitle":"이 글이 마음에 드셨나요? 더 많은 사람과 공유해 보세요","articleShareDescription":"QR 코드를 스캔해 글을 열거나 링크를 친구와 공유하세요.","articleDonationTitle":"작성자 후원하기","articleDonationDescription":"이 글이 도움이 되었다면 창작 활동을 응원해 주세요.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"글 페이지 이동","previousPage":"이전","nextPage":"다음","archive":"아카이브","notes":"짧은 메모","services":"서비스","about":"소개","creativity":"Apple 구독","creativityAriaLabel":"사이트 운영자가 제공하는 합리적인 Apple 구독 공유 서비스","siteDays":"운영 일수","sitePosts":"전체 글 수","siteWords":"전체 단어 수","noPosts":"아직 글이 없습니다.","noPostsDescription":"새 글을 준비하고 있습니다. 나중에 다시 방문해 주세요.","profileStats":"사이트 통계","featureSubtitle":"기술을 탐구하고 가능성을 만들다","profile":"기술 탐구와 오픈 소스 공유에 집중하는 독립 개발자"}}</script> <script data-astro-rerun>
+      (() => {
+      window.sitePageController?.abort();
+      const controller = new AbortController();
+      window.sitePageController = controller;
+      const listenerOptions = { signal: controller.signal };
+      const root = document.documentElement;
+      const withBase = (path) => {
+        if (!path.startsWith("/") || path.startsWith("//")) return path;
+        const base = root.dataset.baseUrl || "/";
+        const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+        if (path === normalizedBase.slice(0, -1) || path.startsWith(normalizedBase)) return path;
+        return `${normalizedBase}${path.slice(1)}`;
+      };
+      if (
+        root.dataset.pageType === "article" &&
+        window.matchMedia("(max-width: 980px)").matches
+      ) {
+        root.classList.add("toc-hidden");
+      } else {
+        root.classList.remove("toc-hidden");
+      }
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.pointerType !== "mouse" ||
+          !(event.target instanceof Element) ||
+          !event.target.closest(".site-header .brand, .site-header .site-nav .nav-links a")
+        ) return;
+        sessionStorage.setItem("navigation-hover-suppressed", "true");
+        root.dataset.navigationHoverSuppressed = "true";
+      }, { ...listenerOptions, capture: true });
+      window.addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "mouse") return;
+        sessionStorage.removeItem("navigation-hover-suppressed");
+        delete root.dataset.navigationHoverSuppressed;
+      }, listenerOptions);
+      const updateNavigationGradient = () => {
+        const header = document.querySelector(".site-header");
+        const capsule = header?.querySelector(".header-inner");
+        if (!header || !capsule || header.dataset.pageType === "article") {
+          capsule?.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const currentPageLink = header.querySelector(
+          '.brand[aria-current="page"], .site-nav .nav-links a[aria-current="page"]',
+        );
+        if (!currentPageLink) {
+          capsule.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const capsuleRect = capsule.getBoundingClientRect();
+        const linkRect = currentPageLink.getBoundingClientRect();
+        capsule.style.setProperty(
+          "--navigation-gradient-shift",
+          `${linkRect.left + linkRect.width / 2 - capsuleRect.left - capsuleRect.width / 2}px`,
+        );
+      };
+      const preserveGradientTransition =
+        root.dataset.navigationGradientReady === "true";
+      const gradientStartRatio = window.navigationGradientStartRatio;
+      delete window.navigationGradientStartRatio;
+      const gradientCapsule = document.querySelector(".site-header .header-inner");
+      if (
+        gradientCapsule &&
+        document.querySelector(".site-header")?.dataset.pageType !== "article"
+      ) {
+        if (Number.isFinite(gradientStartRatio)) {
+          gradientCapsule.style.setProperty("--navigation-gradient-transition", "0s");
+          gradientCapsule.style.setProperty(
+            "--navigation-gradient-shift",
+            `${gradientCapsule.getBoundingClientRect().width * (gradientStartRatio - 0.5)}px`,
+          );
+          getComputedStyle(gradientCapsule, "::before").transform;
+          gradientCapsule.style.removeProperty("--navigation-gradient-transition");
+        }
+        updateNavigationGradient();
+        getComputedStyle(gradientCapsule, "::before").transform;
+        if (preserveGradientTransition) {
+          root.dataset.navigationGradientReady = "true";
+        } else {
+          void document.fonts.ready.then(() => {
+            requestAnimationFrame(() => {
+              if (root !== document.documentElement || !gradientCapsule.isConnected) return;
+              updateNavigationGradient();
+              getComputedStyle(gradientCapsule, "::before").transform;
+              root.dataset.navigationGradientReady = "true";
+            });
+          });
+        }
+      } else {
+        updateNavigationGradient();
+      }
+      window.addEventListener("resize", updateNavigationGradient, listenerOptions);
+      document
+        .querySelector("[data-theme-toggle]")
+        ?.addEventListener("click", () => {
+          window.clearTimeout(window.themeTransitionTimer);
+          root.classList.add("theme-changing");
+          getComputedStyle(root).getPropertyValue("--bg");
+          root.classList.toggle("dark");
+          localStorage.setItem(
+            "theme",
+            root.classList.contains("dark") ? "dark" : "light",
+          );
+          window.themeTransitionTimer = window.setTimeout(() => {
+            root.classList.remove("theme-changing");
+          }, 560);
+        }, listenerOptions);
+
+      const translations = JSON.parse(document.querySelector("#site-translations").textContent);
+      const tocToggle = document.querySelector("[data-toc-toggle]");
+      const articleTocs = [...document.querySelectorAll(".article-toc")];
+      const tocAnimations = new WeakMap();
+      const cancelTocAnimation = (toc) => {
+        const animations = tocAnimations.get(toc);
+        animations?.panel?.cancel();
+        animations?.contents?.cancel();
+        tocAnimations.delete(toc);
+        toc.style.removeProperty("height");
+        toc.style.removeProperty("max-height");
+        const contents = toc.querySelector(".toc");
+        contents?.style.removeProperty("max-height");
+        contents?.style.removeProperty("opacity");
+        contents?.style.removeProperty("overflow");
+        contents?.style.removeProperty("padding-top");
+      };
+      const setArticleTocHidden = (hidden, animate = false) => {
+        const visibleArticleTocs = articleTocs.filter((toc) =>
+          !toc.closest(".localized-article")?.hidden,
+        );
+        const currentHeights = new Map(visibleArticleTocs.map((toc) => [
+          toc,
+          toc.getBoundingClientRect().height,
+        ]));
+        currentHeights.forEach((_, toc) => {
+          cancelTocAnimation(toc);
+        });
+        root.classList.toggle("toc-hidden", hidden);
+        tocToggle?.setAttribute("aria-pressed", String(hidden));
+        articleTocs.forEach((toc) => {
+          toc.setAttribute("aria-hidden", String(hidden));
+          toc.inert = hidden;
+        });
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        tocToggle?.setAttribute(
+          "aria-label",
+          hidden ? dictionary.showArticleContents : dictionary.hideArticleContents,
+        );
+        if (animate) {
+          currentHeights.forEach((currentHeight, toc) => {
+            toc.style.maxHeight = "none";
+            const contents = toc.querySelector(".toc");
+            if (hidden) {
+              toc.style.height = `${currentHeight}px`;
+              toc.getBoundingClientRect();
+              const animation = toc.animate(
+                [{ height: `${currentHeight}px` }, { height: "0px" }],
+                { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              tocAnimations.set(toc, { panel: animation });
+              animation.onfinish = () => {
+                if (tocAnimations.get(toc)?.panel !== animation) return;
+                cancelTocAnimation(toc);
+              };
+              return;
+            }
+
+            if (!(contents instanceof HTMLElement)) return;
+            const maxHeight = Math.max(0, window.innerHeight - 120);
+            toc.style.removeProperty("height");
+            contents.style.removeProperty("max-height");
+            contents.style.removeProperty("opacity");
+            contents.style.removeProperty("overflow");
+            contents.style.removeProperty("padding-top");
+            toc.getBoundingClientRect();
+            const naturalPanelHeight = toc.getBoundingClientRect().height;
+            const expandedHeight = Math.min(
+              Number(toc.dataset.expandedHeight) || naturalPanelHeight,
+              maxHeight,
+            );
+            contents.style.maxHeight = "0px";
+            contents.style.opacity = "0";
+            contents.style.overflow = "hidden";
+            contents.style.paddingTop = "0px";
+            toc.getBoundingClientRect();
+            const headingHeight = toc.getBoundingClientRect().height;
+            const collapsedContentsHeight = contents.getBoundingClientRect().height;
+            const expandedContentsHeight = Math.max(
+              0,
+              expandedHeight - headingHeight + collapsedContentsHeight,
+            );
+            toc.style.height = "0px";
+            toc.getBoundingClientRect();
+
+            const opening = { panel: null, contents: null };
+            tocAnimations.set(toc, opening);
+            const runOpenAnimation = async () => {
+              const headerAnimation = toc.animate(
+                [{ height: "0px" }, { height: `${headingHeight}px` }],
+                { duration: 220, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              opening.panel = headerAnimation;
+              try {
+                await headerAnimation.finished;
+              } catch {
+                return;
+              }
+              if (tocAnimations.get(toc) !== opening) return;
+
+              const panelAnimation = toc.animate(
+                [{ height: `${headingHeight}px` }, { height: `${expandedHeight}px` }],
+                { duration: 420, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              const contentsAnimation = contents.animate(
+                [
+                  { maxHeight: "0px", opacity: 0, paddingTop: "0px" },
+                  {
+                    maxHeight: `${expandedContentsHeight}px`,
+                    opacity: 1,
+                    paddingTop: "16px",
+                  },
+                ],
+                { duration: 420, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              opening.panel = panelAnimation;
+              opening.contents = contentsAnimation;
+              try {
+                await Promise.all([panelAnimation.finished, contentsAnimation.finished]);
+              } catch {
+                return;
+              }
+              if (tocAnimations.get(toc) === opening) cancelTocAnimation(toc);
+            };
+            void runOpenAnimation();
+          });
+        } else {
+          visibleArticleTocs.forEach((toc) => {
+            cancelTocAnimation(toc);
+            if (!hidden) {
+              toc.dataset.expandedHeight = String(toc.getBoundingClientRect().height);
+            }
+          });
+        }
+      };
+      if (tocToggle) setArticleTocHidden(root.classList.contains("toc-hidden"));
+      tocToggle?.addEventListener("click", () => {
+        const hidden = tocToggle.getAttribute("aria-pressed") !== "true";
+        setArticleTocHidden(hidden, true);
+      }, listenerOptions);
+      const languageSelect = document.querySelector("[data-language-select]");
+      const shareControl = document.querySelector("[data-share-control]");
+      const shareToggle = shareControl?.querySelector("[data-share-toggle]");
+      const shareMenu = shareControl?.querySelector(".share-menu");
+      const shareXs = [...document.querySelectorAll("[data-share-x]")];
+      const shareCopies = [...document.querySelectorAll("[data-share-copy]")];
+      const siteHeader = shareControl?.closest(".site-header");
+      if (shareMenu && siteHeader) siteHeader.append(shareMenu);
+      const getShareUrl = (language = root.dataset.language) => {
+        const canonicalLink = document.querySelector('link[rel="canonical"]');
+        const canonicalPath = canonicalLink instanceof HTMLLinkElement
+          ? new URL(canonicalLink.href).pathname
+          : window.location.pathname;
+        const normalizedPath = canonicalPath.replace(/\/+$/, "");
+        const sharePath = normalizedPath
+          ? `${normalizedPath}/${language.toLowerCase()}`
+          : `/${language.toLowerCase()}`;
+        return new URL(sharePath, window.location.origin);
+      };
+      const updateShareUrl = (language) => {
+        const shareUrl = getShareUrl(language).href;
+        const xUrl = new URL("https://twitter.com/intent/tweet");
+        xUrl.searchParams.set("text", shareUrl);
+        shareXs.forEach((shareX) => {
+          shareX.href = xUrl.href;
+          shareX.dataset.appHref = `twitter://post?message=${encodeURIComponent(shareUrl)}`;
+        });
+        window.dispatchEvent(new CustomEvent("share-url-update", {
+          detail: { url: shareUrl },
+        }));
+      };
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      shareXs.forEach((shareX) => {
+        shareX.addEventListener("click", (event) => {
+          if (
+            !isMobileDevice ||
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          event.preventDefault();
+          const appUrl = shareX.dataset.appHref;
+          if (!appUrl) return;
+          window.location.href = appUrl;
+        }, listenerOptions);
+      });
+      const setShareMenuOpen = (open) => {
+        if (!(shareToggle instanceof HTMLButtonElement) || !(shareMenu instanceof HTMLElement)) return;
+        shareToggle.setAttribute("aria-expanded", String(open));
+        shareMenu.hidden = !open;
+        document.body.classList.toggle("share-menu-open", open);
+        if (open) {
+          window.dispatchEvent(new CustomEvent("share-url-update", {
+            detail: { url: getShareUrl().href },
+          }));
+        }
+      };
+      shareToggle?.addEventListener("click", () => {
+        setShareMenuOpen(shareToggle.getAttribute("aria-expanded") !== "true");
+      }, listenerOptions);
+      shareCopies.forEach((shareCopy) => {
+        shareCopy.addEventListener("click", async () => {
+          const language = root.dataset.language;
+          const dictionary = translations[language] ?? translations["zh-Hans"];
+          const shareUrl = getShareUrl(language);
+          try {
+            await navigator.clipboard.writeText(shareUrl.href);
+            shareCopy.textContent = dictionary.shareArticleCopied;
+            window.setTimeout(() => {
+              if (shareCopy.isConnected) {
+                const currentDictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+                shareCopy.textContent = currentDictionary.copyShareLink;
+              }
+            }, 1800);
+          } catch {
+            window.prompt(dictionary.shareArticleError, shareUrl.href);
+          }
+        }, listenerOptions);
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          !(event.target instanceof Element) ||
+          (!event.target.closest("[data-share-control]") && !shareMenu?.contains(event.target))
+        ) {
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+      const applyLanguage = (language) => {
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const requestedLanguage = language === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : language;
+        const effectiveLanguage = availableLanguages.includes(requestedLanguage)
+          ? requestedLanguage
+          : defaultLanguage;
+        const dictionary = translations[effectiveLanguage] ?? translations["zh-Hans"];
+        root.dataset.language = effectiveLanguage;
+        document.documentElement.lang = effectiveLanguage;
+        const localizedArticles = [...document.querySelectorAll(".localized-article")];
+        if (localizedArticles.length > 0) {
+          const selectedArticle =
+            localizedArticles.find(
+              (article) => article.lang.toLowerCase() === effectiveLanguage.toLowerCase(),
+            ) ??
+            localizedArticles.find((article) => article.lang === "zh-Hans") ??
+            localizedArticles.find((article) => article.lang === "zh") ??
+            localizedArticles[0];
+          localizedArticles.forEach((article) => {
+            article.hidden = article !== selectedArticle;
+          });
+        }
+        const localizedMetadata = root.dataset.localizedMetadata
+          ? JSON.parse(root.dataset.localizedMetadata)
+          : null;
+        const metadata = localizedMetadata?.[effectiveLanguage];
+        if (metadata) {
+          document.title = metadata.title;
+          document
+            .querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]')
+            .forEach((element) => {
+              element.content = metadata.description;
+            });
+          document
+            .querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]')
+            .forEach((element) => {
+              element.content = metadata.title;
+            });
+          if (metadata.image) {
+            document
+              .querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]')
+              .forEach((element) => {
+                element.content = new URL(metadata.image, window.location.origin).href;
+              });
+          }
+          if (metadata.imageAlt) {
+            document
+              .querySelectorAll('meta[property="og:image:alt"], meta[name="twitter:image:alt"]')
+              .forEach((element) => {
+                element.content = metadata.imageAlt;
+              });
+          }
+        }
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const value = dictionary[element.dataset.i18n];
+          if (value) element.textContent = value;
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAria];
+          if (value) element.setAttribute("aria-label", value);
+        });
+        if (tocToggle instanceof HTMLButtonElement) {
+          setArticleTocHidden(tocToggle.getAttribute("aria-pressed") === "true");
+        }
+        document.querySelectorAll("[data-i18n-alt]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAlt];
+          if (value) element.setAttribute("alt", value);
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nPlaceholder];
+          if (value) element.setAttribute("placeholder", value);
+        });
+        const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+        if (mobileMenuToggle) {
+          const label = mobileMenuToggle.getAttribute("aria-expanded") === "true"
+            ? dictionary.closeMobileMenu
+            : dictionary.openMobileMenu;
+          mobileMenuToggle.setAttribute("aria-label", label);
+        }
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete("lang");
+        const legacyLanguageHash = new URLSearchParams(currentUrl.hash.slice(1)).get("lang");
+        if (legacyLanguageHash) currentUrl.hash = "";
+        const canonical = document.querySelector('link[rel="canonical"]');
+        if (
+          root.dataset.pageType === "article" &&
+          root.dataset.shareLanguage &&
+          canonical instanceof HTMLLinkElement
+        ) {
+          currentUrl.pathname = new URL(canonical.href).pathname;
+        }
+        if (`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` !==
+          `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+          window.history.replaceState(window.history.state, "", currentUrl);
+        }
+        const openGraphUrl = document.querySelector('meta[property="og:url"]');
+        if (openGraphUrl instanceof HTMLMetaElement) {
+          openGraphUrl.content = new URL(currentUrl.pathname, window.location.origin).href;
+        }
+        const openGraphLocale = document.querySelector('meta[property="og:locale"]');
+        const socialLocales = {
+          "zh-Hans": "zh_CN",
+          "zh-Hant": "zh_TW",
+          en: "en_US",
+          ja: "ja_JP",
+          ko: "ko_KR",
+        };
+        if (openGraphLocale instanceof HTMLMetaElement) {
+          openGraphLocale.content = socialLocales[effectiveLanguage] ?? socialLocales["zh-Hans"];
+        }
+        const homeLink = document.querySelector("[data-home-link]");
+        if (homeLink instanceof HTMLAnchorElement) {
+          homeLink.href = withBase("/");
+        }
+        document.querySelectorAll("[data-post-href]").forEach((element) => {
+          if (!(element instanceof HTMLAnchorElement)) return;
+          const basePath = new URL(element.dataset.postHref, window.location.origin).pathname;
+          element.href = basePath;
+        });
+        updateShareUrl(effectiveLanguage);
+        languageSelect.value = effectiveLanguage;
+        root.dataset.languageReady = "true";
+        root.removeAttribute("data-language-pending");
+        document.dispatchEvent(new CustomEvent("site-language-change", {
+          detail: { language: effectiveLanguage },
+        }));
+      };
+      const currentUrl = new URL(window.location.href);
+      const requestedLanguage =
+        new URLSearchParams(currentUrl.hash.slice(1)).get("lang") ||
+        currentUrl.searchParams.get("lang") ||
+        root.dataset.shareLanguage;
+      const savedLanguage = localStorage.getItem("language-preference");
+      applyLanguage(requestedLanguage || savedLanguage || root.dataset.language);
+      languageSelect?.addEventListener("change", () => {
+        const language = languageSelect.value;
+        localStorage.setItem("language-preference", language);
+        applyLanguage(language);
+      }, listenerOptions);
+
+      const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+      const mobileNavBackdrop = document.querySelector("[data-mobile-nav-backdrop]");
+      const setMobileMenuOpen = (open) => {
+        document.body.classList.toggle("mobile-nav-open", open);
+        mobileMenuToggle?.setAttribute("aria-expanded", String(open));
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        mobileMenuToggle?.setAttribute(
+          "aria-label",
+          open ? dictionary.closeMobileMenu : dictionary.openMobileMenu,
+        );
+      };
+      mobileMenuToggle?.addEventListener("click", () => {
+        const open = !document.body.classList.contains("mobile-nav-open");
+        if (open) setShareMenuOpen(false);
+        setMobileMenuOpen(open);
+      }, listenerOptions);
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.target instanceof Element &&
+          !event.target.closest(".site-nav, [data-mobile-menu-toggle]")
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, listenerOptions);
+      window.addEventListener("scroll", (event) => {
+        if (
+          document.body.classList.contains("mobile-nav-open") &&
+          !(event.target instanceof Element && event.target.closest(".site-nav"))
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, { ...listenerOptions, capture: true, passive: true });
+      const closeMobileMenuOnScroll = () => {
+        if (document.body.classList.contains("mobile-nav-open")) {
+          setMobileMenuOpen(false);
+        }
+      };
+      window.addEventListener("wheel", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        capture: true,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("touchmove", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("click", () => {
+        setMobileMenuOpen(false);
+        setShareMenuOpen(false);
+      }, listenerOptions);
+      document.querySelectorAll(".site-nav a").forEach((link) => {
+        link.addEventListener("click", () => setMobileMenuOpen(false), listenerOptions);
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setMobileMenuOpen(false);
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+
+      document.querySelectorAll("pre").forEach((block) => {
+        const button = document.createElement("button");
+        button.className = "copy-code";
+        button.type = "button";
+        button.textContent = "复制";
+        button.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(
+            block.querySelector("code")?.innerText || block.innerText,
+          );
+          button.textContent = "已复制";
+          setTimeout(() => (button.textContent = "复制"), 1400);
+        }, listenerOptions);
+        block.appendChild(button);
+      });
+
+      document.querySelectorAll(".video-embed iframe").forEach((frame) => {
+        const width = Number(frame.getAttribute("width"));
+        const height = Number(frame.getAttribute("height"));
+        if (width > 0 && height > 0) {
+          frame.parentElement.style.setProperty(
+            "--video-ratio",
+            `${width} / ${height}`,
+          );
+          frame.parentElement.classList.toggle("portrait", width < height);
+          frame.parentElement.classList.toggle("square", width === height);
+        }
+
+        try {
+          const videoUrl = new URL(frame.src, window.location.href);
+          if (/(^|\.)youtube(?:-nocookie)?\.com$/.test(videoUrl.hostname)) {
+            videoUrl.searchParams.set("rel", "0");
+            videoUrl.searchParams.set("modestbranding", "1");
+            videoUrl.searchParams.set("playsinline", "1");
+            videoUrl.searchParams.set("iv_load_policy", "3");
+            frame.src = videoUrl.toString();
+          }
+        } catch {
+          // Leave embeds from other providers untouched.
+        }
+      });
+      })();
+    </script> <script type="module" src="/_astro/BaseLayout.astro_astro_type_script_index_0_lang.D6bboDWB.js"></script> </body> </html>

@@ -1,0 +1,2515 @@
+<!DOCTYPE html><html lang="zh-Hans" data-language="zh-Hans" data-default-language="zh-Hans" data-base-url="/" data-page-type="standard" data-available-languages="[&#34;zh-Hans&#34;,&#34;en&#34;,&#34;ja&#34;,&#34;ko&#34;,&#34;zh-Hant&#34;]"> <head><script>
+      (() => {
+        document.documentElement.dataset.languagePending = "true";
+        if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+          document.documentElement.dataset.navigationHoverSuppressed = "true";
+        }
+        const root = document.documentElement;
+        if (
+          root.dataset.pageType === "article" &&
+          window.matchMedia("(max-width: 980px)").matches
+        ) {
+          root.classList.add("toc-hidden");
+        }
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const cachedLanguage = localStorage.getItem("language-preference");
+        const normalizedCachedLanguage = cachedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : cachedLanguage;
+        const pageUrl = new URL(window.location.href);
+        const requestedLanguage =
+          new URLSearchParams(pageUrl.hash.slice(1)).get("lang") ??
+          pageUrl.searchParams.get("lang") ??
+          root.dataset.shareLanguage;
+        const normalizedRequestedLanguage = requestedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : requestedLanguage;
+        const hasRequestedLanguage = availableLanguages.includes(normalizedRequestedLanguage);
+        const hasCachedLanguage = availableLanguages.includes(normalizedCachedLanguage);
+        const systemLanguages = hasRequestedLanguage || hasCachedLanguage
+          ? []
+          : navigator.languages?.length
+            ? navigator.languages
+            : [navigator.language];
+        const systemLanguage = systemLanguages
+          .map((value) => value.toLowerCase().replaceAll("_", "-"))
+          .map((value) => {
+            const exact = availableLanguages.find((language) => language.toLowerCase() === value);
+            if (exact) return exact;
+            const directMatch = availableLanguages.find((language) =>
+              value.startsWith(`${language.toLowerCase()}-`),
+            );
+            if (directMatch) return directMatch;
+            if (value.startsWith("zh-")) {
+              const script = /-(hant|tw|hk|mo)(-|$)/i.test(value) ? "zh-Hant" : "zh-Hans";
+              return availableLanguages.includes(script) ? script : undefined;
+            }
+            return undefined;
+          })
+          .find(Boolean);
+        const language = hasRequestedLanguage
+          ? normalizedRequestedLanguage
+          : hasCachedLanguage
+          ? normalizedCachedLanguage
+          : systemLanguage ?? defaultLanguage;
+        if (hasRequestedLanguage && (pageUrl.hash || root.dataset.shareLanguage)) {
+          localStorage.setItem("language-preference", language);
+        }
+        document.documentElement.dataset.language = language;
+        document.documentElement.lang = language;
+        const savedTheme = localStorage.getItem("theme");
+        if (!savedTheme) {
+          const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          localStorage.setItem("theme", systemTheme);
+          document.documentElement.classList.toggle("dark", systemTheme === "dark");
+        }
+        const homePostView = localStorage.getItem("home-post-view");
+        document.documentElement.dataset.homePostView =
+          homePostView === "grid" ? "grid" : "list";
+        const markScrollRestoration = (root) => {
+          root.setAttribute("data-scroll-restoring", "");
+        };
+        const pauseCarousels = (root) => {
+          root.setAttribute("data-carousel-navigation", "");
+        };
+        const resumeCarousels = (root) => {
+          root.removeAttribute("data-carousel-navigation");
+        };
+        const resumeCarouselsAfterImagesDecode = async () => {
+          const root = document.documentElement;
+          const logos = new Map();
+          document
+            .querySelectorAll(
+              ".about-skills-marquee .creativity-set img, .creativity-marquee .creativity-set img, .creativity-mobile-marquee .creativity-set img",
+            )
+            .forEach((image) => {
+              if (image instanceof HTMLImageElement) {
+                logos.set(image.currentSrc || image.src, image);
+              }
+            });
+
+          await Promise.allSettled(
+            [...logos.values()].map((image) => image.decode()),
+          );
+          if (root !== document.documentElement) return;
+
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+          if (root === document.documentElement) {
+            resumeCarousels(root);
+          }
+        };
+        const hasCarousels = (document) =>
+          document.querySelector(".about-page, .home-visual .creativity-marquee");
+        const hasCarouselAtTarget = (url) => {
+          const path = new URL(url, window.location.href).pathname;
+          const base = (root.dataset.baseUrl || "/").replace(/\/+$/, "");
+          const sitePath = base && path.startsWith(`${base}/`) ? path.slice(base.length) : path;
+          const normalizedPath = sitePath.replace(/\/+$/, "");
+          return normalizedPath === "" || normalizedPath === "/" || normalizedPath === "/about";
+        };
+        const clearScrollRestoration = () => {
+          document.documentElement.removeAttribute("data-scroll-restoring");
+        };
+
+        markScrollRestoration(document.documentElement);
+        pauseCarousels(document.documentElement);
+        document.addEventListener("astro:before-preparation", (event) => {
+          if (hasCarousels(document) || hasCarouselAtTarget(event.to)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        document.addEventListener("astro:before-swap", (event) => {
+          event.newDocument.documentElement.dataset.languagePending = "true";
+          event.newDocument.documentElement.dataset.navigationGradientReady = "true";
+          if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+            event.newDocument.documentElement.dataset.navigationHoverSuppressed = "true";
+          }
+          markScrollRestoration(document.documentElement);
+          markScrollRestoration(event.newDocument.documentElement);
+          const currentHeader = document.querySelector(".site-header");
+          const currentCapsule = currentHeader?.querySelector(".header-inner");
+          delete window.navigationGradientStartRatio;
+          if (currentCapsule && currentHeader?.dataset.pageType !== "article") {
+            const currentWidth = currentCapsule.getBoundingClientRect().width;
+            const gradientTransform = getComputedStyle(
+              currentCapsule,
+              "::before",
+            ).transform;
+            const currentShift =
+              gradientTransform === "none"
+                ? 0
+                : new DOMMatrixReadOnly(gradientTransform).m41;
+            if (currentWidth > 0 && Number.isFinite(currentShift)) {
+              window.navigationGradientStartRatio =
+                0.5 + currentShift / currentWidth;
+            }
+          }
+          if (hasCarousels(document) || hasCarousels(event.newDocument)) {
+            pauseCarousels(document.documentElement);
+            pauseCarousels(event.newDocument.documentElement);
+          }
+        });
+        document.addEventListener("astro:after-swap", clearScrollRestoration);
+        document.addEventListener("astro:page-load", clearScrollRestoration, {
+          once: true,
+        });
+        document.addEventListener("astro:page-load", resumeCarouselsAfterImagesDecode);
+        window.addEventListener("pagehide", () => {
+          if (hasCarousels(document)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        window.addEventListener("pageshow", (event) => {
+          if (event.persisted) {
+            resumeCarouselsAfterImagesDecode();
+          }
+        });
+      })();
+    </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="none"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.QW52Ox2j.js"></script><script data-astro-rerun>
+      (() => {
+      const applySavedTheme = (root) => {
+        root.classList.toggle("dark", localStorage.getItem("theme") === "dark");
+      };
+      applySavedTheme(document.documentElement);
+      if (!window.themeSwapListenerInstalled) {
+        window.themeSwapListenerInstalled = true;
+        document.addEventListener("astro:before-swap", (event) => {
+          applySavedTheme(event.newDocument.documentElement);
+        });
+      }
+      })();
+    </script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="按分类、标签浏览文章，或直接搜索关键词。"><link rel="canonical" href="https://hooleeas.github.io/archive/"><meta property="og:type" content="website"><meta property="og:site_name" content="Hooleeas"><meta property="og:locale" content="zh_CN"><meta property="og:title" content="文章归档"><meta property="og:description" content="按分类、标签浏览文章，或直接搜索关键词。"><meta property="og:url" content="https://hooleeas.github.io/archive/"><meta property="og:image" content="https://hooleeas.github.io/og/pages/archive.png?v=10"><meta property="og:image:alt" content="文章归档"><meta name="twitter:image:alt" content="文章归档"><meta property="og:image:width" content="1800"><meta property="og:image:height" content="600"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="文章归档"><meta name="twitter:description" content="按分类、标签浏览文章，或直接搜索关键词。"><meta name="twitter:image" content="https://hooleeas.github.io/og/pages/archive.png?v=10"><link rel="icon" href="/icon/favicon.ico?v=8" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" href="/icon/icon_16x16.png?v=8" sizes="16x16"><link rel="icon" type="image/png" href="/icon/icon_32x32.png?v=8" sizes="32x32"><link rel="icon" type="image/png" href="/icon/icon_48x48.png?v=8" sizes="48x48"><link rel="icon" type="image/png" href="/icon/icon_512x512.png?v=8" sizes="512x512"><link rel="apple-touch-icon" sizes="180x180" href="/icon/icon_180x180.png?v=8"><link rel="manifest" href="/icon/site.webmanifest?v=8"><title data-i18n="archiveTitle">文章归档</title><link rel="stylesheet" href="/_astro/_slug_.DIaYWNEb.css">
+<link rel="stylesheet" href="/_astro/archive.CB8i4tBV.css"></head> <body> <svg class="glass-filter-definitions" aria-hidden="true" focusable="false"> <filter id="liquid-glass-refraction" x="-20%" y="-20%" width="140%" height="140%"> <feTurbulence type="fractalNoise" baseFrequency="0.035 0.045" numOctaves="1" seed="7" result="glass-noise"></feTurbulence> <feDisplacementMap in="SourceGraphic" in2="glass-noise" scale="2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap> </filter> </svg> <header class="site-header" data-page-type="standard"> <div class="container header-inner"> <a class="brand" href="/" data-home-link data-i18n="navigationHome"> 主页 </a> <div class="nav-controls">  <div class="share-control" data-share-control> <button class="share-trigger" type="button" aria-label="分享页面" aria-expanded="false" aria-controls="page-share-menu" data-share-toggle data-i18n-aria="shareMenuLabel"> <img class="share-icon" src="https://developer.apple.com/tutorials/images/com.apple.HIG/jp/icons-symbols-meaning-sharing@2x.png" alt="" aria-hidden="true"> </button> <div class="share-menu" id="page-share-menu" role="menu" hidden> <div class="share-qr-section" role="group"> <strong class="share-menu-heading" data-i18n="shareMenuHeading">分享此页面</strong> <canvas class="share-qr-code" width="160" height="160" role="img" aria-label="页面二维码" data-i18n-aria="shareQrCode" data-share-qr-code></canvas> <span class="share-qr-label" data-i18n="shareQrCode">扫码访问此页面</span> </div> <a class="share-menu-item" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" role="menuitem" data-share-x data-i18n="shareToX">分享到 X</a> <button class="share-menu-item" type="button" role="menuitem" data-share-copy data-i18n="copyShareLink">复制链接</button> </div> </div> <div class="language-picker"> <span class="language-glyph" aria-hidden="true"><span>文</span><small>A</small></span> <select class="language-select" aria-label="选择语言" data-i18n-aria="languagePicker" data-language-select> <option value="zh-Hans">简体中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh-Hant">繁體中文</option> </select> </div> <button class="toggle" aria-label="Toggle theme" data-i18n-aria="themeToggle" data-theme-toggle>
+◐
+</button> </div> <button class="mobile-menu-toggle" type="button" aria-label="打开导航菜单" aria-expanded="false" data-mobile-menu-toggle> <span></span><span></span><span></span> </button> </div> <nav class="site-nav"> <div class="nav-links"> <a href="/archive/" data-i18n="archive" aria-current="page">文章归档</a><a href="/notes/" data-i18n="notes">随记</a><a href="/charity/" data-i18n="services">公益服务</a><a href="/about/" data-i18n="about">关于</a> </div> </nav> </header> <div class="mobile-nav-backdrop" data-mobile-nav-backdrop></div> <main>  <div class="container archive-page" data-astro-cid-qma2cssl> <header class="archive-heading content-page-heading" data-astro-cid-qma2cssl> <h1 data-i18n="archiveTitle" data-astro-cid-qma2cssl>文章归档</h1> <p data-i18n="archiveIntroduction" data-astro-cid-qma2cssl>按分类、标签浏览文章，或直接搜索关键词。</p> </header> <section class="archive-controls" aria-label="文章筛选" data-i18n-aria="archiveFilters" data-astro-cid-qma2cssl> <label class="archive-search" data-astro-cid-qma2cssl> <span class="archive-search-icon" aria-hidden="true" data-astro-cid-qma2cssl>⌕</span> <span class="visually-hidden" data-i18n="archiveSearchLabel" data-astro-cid-qma2cssl>搜索文章</span> <input type="search" data-archive-search placeholder="搜索标题、摘要或正文" data-i18n-placeholder="archiveSearchPlaceholder" data-astro-cid-qma2cssl> <kbd data-astro-cid-qma2cssl>⌘ K</kbd> </label> <div class="archive-filters" data-astro-cid-qma2cssl> <div class="archive-filter-group" aria-label="分类" data-i18n-aria="archiveCategories" data-astro-cid-qma2cssl> <span class="archive-filter-label" data-i18n="archiveCategories" data-astro-cid-qma2cssl>分类</span> <div class="archive-filter-options" data-filter-group="category" data-astro-cid-qma2cssl> <button class="archive-filter-chip active" type="button" data-filter-value="all" data-i18n="archiveAll" data-astro-cid-qma2cssl>全部</button> <button class="archive-filter-chip" type="button" data-filter-value="Guides" data-category-option data-astro-cid-qma2cssl>Guides</button><button class="archive-filter-chip" type="button" data-filter-value="Projects" data-category-option data-astro-cid-qma2cssl>Projects</button><button class="archive-filter-chip" type="button" data-filter-value="ガイド" data-category-option data-astro-cid-qma2cssl>ガイド</button><button class="archive-filter-chip" type="button" data-filter-value="プロジェクト紹介" data-category-option data-astro-cid-qma2cssl>プロジェクト紹介</button><button class="archive-filter-chip" type="button" data-filter-value="使用指南" data-category-option data-astro-cid-qma2cssl>使用指南</button><button class="archive-filter-chip" type="button" data-filter-value="項目介紹" data-category-option data-astro-cid-qma2cssl>項目介紹</button><button class="archive-filter-chip" type="button" data-filter-value="项目介绍" data-category-option data-astro-cid-qma2cssl>项目介绍</button><button class="archive-filter-chip" type="button" data-filter-value="가이드" data-category-option data-astro-cid-qma2cssl>가이드</button><button class="archive-filter-chip" type="button" data-filter-value="프로젝트 소개" data-category-option data-astro-cid-qma2cssl>프로젝트 소개</button> </div> </div> <div class="archive-filter-group" aria-label="标签" data-i18n-aria="archiveTags" data-astro-cid-qma2cssl> <span class="archive-filter-label" data-i18n="archiveTags" data-astro-cid-qma2cssl>标签</span> <div class="archive-filter-options" data-filter-group="tag" data-astro-cid-qma2cssl> <button class="archive-filter-chip active" type="button" data-filter-value="all" data-i18n="archiveAll" data-astro-cid-qma2cssl>全部</button> <button class="archive-filter-chip" type="button" data-filter-value="Admin Panel" data-tag-option data-astro-cid-qma2cssl>Admin Panel</button><button class="archive-filter-chip" type="button" data-filter-value="Astro" data-tag-option data-astro-cid-qma2cssl>Astro</button><button class="archive-filter-chip" type="button" data-filter-value="Blogging" data-tag-option data-astro-cid-qma2cssl>Blogging</button><button class="archive-filter-chip" type="button" data-filter-value="Deployment" data-tag-option data-astro-cid-qma2cssl>Deployment</button><button class="archive-filter-chip" type="button" data-filter-value="Editor" data-tag-option data-astro-cid-qma2cssl>Editor</button><button class="archive-filter-chip" type="button" data-filter-value="Example" data-tag-option data-astro-cid-qma2cssl>Example</button><button class="archive-filter-chip" type="button" data-filter-value="Image Hosting" data-tag-option data-astro-cid-qma2cssl>Image Hosting</button><button class="archive-filter-chip" type="button" data-filter-value="Markdown" data-tag-option data-astro-cid-qma2cssl>Markdown</button><button class="archive-filter-chip" type="button" data-filter-value="Multilingual" data-tag-option data-astro-cid-qma2cssl>Multilingual</button><button class="archive-filter-chip" type="button" data-filter-value="Open Source" data-tag-option data-astro-cid-qma2cssl>Open Source</button><button class="archive-filter-chip" type="button" data-filter-value="Writing" data-tag-option data-astro-cid-qma2cssl>Writing</button><button class="archive-filter-chip" type="button" data-filter-value="Writing guide" data-tag-option data-astro-cid-qma2cssl>Writing guide</button><button class="archive-filter-chip" type="button" data-filter-value="エディタ" data-tag-option data-astro-cid-qma2cssl>エディタ</button><button class="archive-filter-chip" type="button" data-filter-value="オープンソース" data-tag-option data-astro-cid-qma2cssl>オープンソース</button><button class="archive-filter-chip" type="button" data-filter-value="サンプル" data-tag-option data-astro-cid-qma2cssl>サンプル</button><button class="archive-filter-chip" type="button" data-filter-value="デプロイ" data-tag-option data-astro-cid-qma2cssl>デプロイ</button><button class="archive-filter-chip" type="button" data-filter-value="ブログ" data-tag-option data-astro-cid-qma2cssl>ブログ</button><button class="archive-filter-chip" type="button" data-filter-value="写作" data-tag-option data-astro-cid-qma2cssl>写作</button><button class="archive-filter-chip" type="button" data-filter-value="写作指南" data-tag-option data-astro-cid-qma2cssl>写作指南</button><button class="archive-filter-chip" type="button" data-filter-value="博客" data-tag-option data-astro-cid-qma2cssl>博客</button><button class="archive-filter-chip" type="button" data-filter-value="图床" data-tag-option data-astro-cid-qma2cssl>图床</button><button class="archive-filter-chip" type="button" data-filter-value="圖床" data-tag-option data-astro-cid-qma2cssl>圖床</button><button class="archive-filter-chip" type="button" data-filter-value="執筆" data-tag-option data-astro-cid-qma2cssl>執筆</button><button class="archive-filter-chip" type="button" data-filter-value="多言語" data-tag-option data-astro-cid-qma2cssl>多言語</button><button class="archive-filter-chip" type="button" data-filter-value="多語言" data-tag-option data-astro-cid-qma2cssl>多語言</button><button class="archive-filter-chip" type="button" data-filter-value="多语言" data-tag-option data-astro-cid-qma2cssl>多语言</button><button class="archive-filter-chip" type="button" data-filter-value="寫作" data-tag-option data-astro-cid-qma2cssl>寫作</button><button class="archive-filter-chip" type="button" data-filter-value="寫作指南" data-tag-option data-astro-cid-qma2cssl>寫作指南</button><button class="archive-filter-chip" type="button" data-filter-value="开源项目" data-tag-option data-astro-cid-qma2cssl>开源项目</button><button class="archive-filter-chip" type="button" data-filter-value="文章作成" data-tag-option data-astro-cid-qma2cssl>文章作成</button><button class="archive-filter-chip" type="button" data-filter-value="画像ホスティング" data-tag-option data-astro-cid-qma2cssl>画像ホスティング</button><button class="archive-filter-chip" type="button" data-filter-value="示例" data-tag-option data-astro-cid-qma2cssl>示例</button><button class="archive-filter-chip" type="button" data-filter-value="管理后台" data-tag-option data-astro-cid-qma2cssl>管理后台</button><button class="archive-filter-chip" type="button" data-filter-value="管理後台" data-tag-option data-astro-cid-qma2cssl>管理後台</button><button class="archive-filter-chip" type="button" data-filter-value="管理画面" data-tag-option data-astro-cid-qma2cssl>管理画面</button><button class="archive-filter-chip" type="button" data-filter-value="範例" data-tag-option data-astro-cid-qma2cssl>範例</button><button class="archive-filter-chip" type="button" data-filter-value="編輯器" data-tag-option data-astro-cid-qma2cssl>編輯器</button><button class="archive-filter-chip" type="button" data-filter-value="编辑器" data-tag-option data-astro-cid-qma2cssl>编辑器</button><button class="archive-filter-chip" type="button" data-filter-value="部署" data-tag-option data-astro-cid-qma2cssl>部署</button><button class="archive-filter-chip" type="button" data-filter-value="部落格" data-tag-option data-astro-cid-qma2cssl>部落格</button><button class="archive-filter-chip" type="button" data-filter-value="開源項目" data-tag-option data-astro-cid-qma2cssl>開源項目</button><button class="archive-filter-chip" type="button" data-filter-value="관리 화면" data-tag-option data-astro-cid-qma2cssl>관리 화면</button><button class="archive-filter-chip" type="button" data-filter-value="글쓰기" data-tag-option data-astro-cid-qma2cssl>글쓰기</button><button class="archive-filter-chip" type="button" data-filter-value="글쓰기 가이드" data-tag-option data-astro-cid-qma2cssl>글쓰기 가이드</button><button class="archive-filter-chip" type="button" data-filter-value="다국어" data-tag-option data-astro-cid-qma2cssl>다국어</button><button class="archive-filter-chip" type="button" data-filter-value="배포" data-tag-option data-astro-cid-qma2cssl>배포</button><button class="archive-filter-chip" type="button" data-filter-value="블로그" data-tag-option data-astro-cid-qma2cssl>블로그</button><button class="archive-filter-chip" type="button" data-filter-value="예제" data-tag-option data-astro-cid-qma2cssl>예제</button><button class="archive-filter-chip" type="button" data-filter-value="오픈소스" data-tag-option data-astro-cid-qma2cssl>오픈소스</button><button class="archive-filter-chip" type="button" data-filter-value="이미지 호스팅" data-tag-option data-astro-cid-qma2cssl>이미지 호스팅</button><button class="archive-filter-chip" type="button" data-filter-value="편집기" data-tag-option data-astro-cid-qma2cssl>편집기</button> </div> </div> </div> </section> <div class="archive-results-line" data-astro-cid-qma2cssl> <span data-astro-cid-qma2cssl><strong data-result-count data-astro-cid-qma2cssl>35</strong> <span data-i18n="archiveResults" data-astro-cid-qma2cssl>篇文章</span></span> <button class="archive-reset" type="button" data-archive-reset data-i18n="archiveReset" hidden data-astro-cid-qma2cssl>清除筛选</button> </div> <section class="archive-list" data-archive-list aria-label="文章列表" data-i18n-aria="archiveList" data-astro-cid-qma2cssl> <a class="archive-row" href="/astro-blog-admin-deploy/" data-post-href="/astro-blog-admin-deploy/" data-archive-item data-post-translation-group="translation:astro-blog-admin-deploy" data-post-language="en" data-category="Projects" data-tags="Astro|Image Hosting|Deployment" data-search="One codebase, two homes: dual storage and dual-platform deployment The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform's own storage, yet presents an identical interface and link rules. Projects Astro Image Hosting Deployment astro-blog-admin has an unusual deployment story: one repository, one branch, deployed at the same time to Cloudflare Pages and Tencent EdgeOne Pages, with feature parity and an identical interface on both. This article covers how its built-in image bed lands on the two platforms, and what dual-platform development gives — and teaches.
+
+## The image bed: upload, get a link, done
+
+### A public upload page
+
+The site's root path is a login-free public upload page: pick an image, upload it, get a link — nothing more. It cannot manage images or touch settings. The in-admin image page adds management: large previews, checkbox batch deletion, and a lightbox for full-size viewing. PNG/JPG uploads are converted to WebP in the browser first to save space, and upload progress is a set of thin bars at the top of the page that fade away when done.
+
+### Link rules
+
+Image URLs are root-relative only: `/<prefix>/<filename>`, no domain. The prefix is customizable in settings, and it does not matter which domain serves the page — change domains or platforms and every image URL already written into your posts keeps working. Uploading a file whose name already exists auto-renames it with a suffix instead of overwriting.
+
+## Dual storage: one interface, two backends
+
+### A storage abstraction layer
+
+Upload, read, list and delete all go through one storage layer, dispatched by configuration: on Cloudflare it prefers a bound R2 bucket and falls back to the S3-compatible API; on EdgeOne it uses the platform's own Blob store. Even the settings label is platform-aware — the second storage tier is called &#34;Cloudflare R2&#34; on Cloudflare and &#34;EdgeOne Blob&#34; on EdgeOne, while the stored configuration value stays the same and neither side affects the other.
+
+### Switching does not migrate
+
+The two stores are independent: an image uploaded to R2 is invisible when you switch to Blob, and back again when you switch back. This &#34;no automatic moving&#34; is deliberate — storage is a platform asset, and the code's job is to do things right on the platform it is currently running on.
+
+## Dual-platform deployment
+
+### Platform detection at build time
+
+The build command is identical on both sides. At build time the code detects where it is (from marker variables the platform injects), bakes the answer into the output, and at runtime follows platform-specific storage and configuration paths. One codebase, one branch, two deployments — no near-duplicate repositories to maintain.
+
+### The lesson: variables first, code second
+
+The biggest dual-platform trap is not in the code but in configuration: any change involving environment variables must update and read-back-verify the variables on the platform side first, and only then push code — because a push is a deployment, and reversing the order leaves production running without the variables it needs for a while. Each platform's variables are independent, so the discipline has to be performed twice.
+
+That closes this six-article series: the blog itself, multilingual, content shapes, the admin overview, visual editing, and the image bed with deployment. Both projects are open source — come and see what they look like now in their GitHub repositories." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-03T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-03 </time> <span class="archive-title" data-astro-cid-qma2cssl>One codebase, two homes: dual storage and dual-platform deployment</span> <p class="archive-description" data-astro-cid-qma2cssl>The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform&#39;s own storage, yet presents an identical interface and link rules.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Projects</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>Image Hosting</span><span class="archive-tag" data-astro-cid-qma2cssl>Deployment</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-deploy/" data-post-href="/astro-blog-admin-deploy/" data-archive-item data-post-translation-group="translation:astro-blog-admin-deploy" data-post-language="ja" data-category="プロジェクト紹介" data-tags="Astro|画像ホスティング|デプロイ" data-search="1つのコードベース、2つの家：画像ホスティングの二重ストレージと二重プラットフォーム展開 astro-blog-admin の同じコードが Cloudflare Pages と EdgeOne Pages の両方にデプロイされています。画像ホスティングは各プラットフォーム自身のストレージを使いながら、まったく同じインターフェースとリンク規則を提供します。 プロジェクト紹介 Astro 画像ホスティング デプロイ astro-blog-admin には少し珍しいデプロイ方式があります。1 つのリポジトリ、1 つのブランチを、Cloudflare Pages と Tencent EdgeOne Pages の 2 プラットフォームへ同時にデプロイし、両側で機能は対等、インターフェースは同一です。本稿では内蔵の画像ホスティングが 2 プラットフォームにどう着地したか、そして二重プラットフォームが開発にもたらす利点と教訓を扱います。
+
+## 画像ホスティング：アップロードして、リンクを得る、それだけ
+
+### 公開アップロードページ
+
+サイトのルートパスはログイン不要の公開アップロードページです。画像を選んで、アップロードして、リンクを得る——それだけ。管理も設定変更もできません。管理画面内の画像ページには管理機能が加わります：大きなプレビュー、チェックボックスでの一括削除、ライトボックスでの原寸表示。アップロード時、PNG/JPG は空間の節約のためにブラウザ側で先に WebP へ変換され、進捗はページ上部の細いバーが複数並ぶ形で示され、完了すると自動で消えます。
+
+### リンクの規則
+
+画像の URL はルート相対のみ：`/<接頭辞>/<ファイル名>`、ドメインを含みません。接頭辞は設定でカスタマイズでき、どのドメインで開くかは関係ありません——ドメインやプラットフォームを変えても、記事に書かれた画像 URL はそのまま動きます。同名ファイルの再アップロードは上書きせず、自動で連番を付けて改名されます。
+
+## 二重ストレージ：1 つのインターフェース、2 つのバックエンド
+
+### ストレージ抽象化レイヤー
+
+アップロード、読み取り、一覧、削除はすべて統一されたストレージ層を通り、設定に応じて振り分けられます。Cloudflare 側ではバインドされた R2 バケットを優先し、なければ S3 互換 API を使い、EdgeOne 側ではプラットフォーム標準の Blob ストレージを使います。設定ページの第 2 ティアの呼び名までプラットフォーム対応で、Cloudflare では「Cloudflare R2」、EdgeOne では「EdgeOne Blob」と表示されますが、保存される設定値は同じで、両側は互いに影響しません。
+
+### 切替で移行はしない
+
+2 つのストレージは独立しています。R2 に上げた画像は Blob に切り替えると見えず、戻すとまた見えます。この「自動で引っ越さない」設計は意図的です——ストレージはプラットフォームの資産であり、コードの仕事は今動いているプラットフォームで物事を正しく行うことだからです。
+
+## 二重プラットフォーム展開
+
+### ビルド時のプラットフォーム判定
+
+ビルドコマンドは両側で同一です。コードはビルド時に、プラットフォームが注入するマーカー変数から「自分がどこにいるか」を判定し、その結果を成果物に焼き込んで、実行時にプラットフォーム別のストレージと設定読み込みへ分岐します。1 つのコードベース、1 つのブランチ、2 回のデプロイ。似たようなリポジトリを 2 つ保守する必要はありません。
+
+### 教訓：変数が先、コードは後
+
+二重プラットフォーム最大の落とし穴はコードではなく設定にあります。環境変数に関わる変更は、まずプラットフォーム側で変数を変更し、読み戻して検証してから、コードをプッシュしなければなりません——プッシュ即デプロイなので、順序が逆だと本番がしばらく変数不足の状態で動くことになります。各プラットフォームの変数は独立しているため、この規律は 2 回実行する必要があります。
+
+この 6 本のシリーズはここまでです：ブログ本体、多言語、コンテンツの形、管理画面の概要、ビジュアル編集、画像ホスティングとデプロイ。どちらのプロジェクトもオープンソースです。GitHub リポジトリで今の姿をぜひ見てみてください。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-03T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-03 </time> <span class="archive-title" data-astro-cid-qma2cssl>1つのコードベース、2つの家：画像ホスティングの二重ストレージと二重プラットフォーム展開</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin の同じコードが Cloudflare Pages と EdgeOne Pages の両方にデプロイされています。画像ホスティングは各プラットフォーム自身のストレージを使いながら、まったく同じインターフェースとリンク規則を提供します。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>プロジェクト紹介</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>画像ホスティング</span><span class="archive-tag" data-astro-cid-qma2cssl>デプロイ</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-deploy/" data-post-href="/astro-blog-admin-deploy/" data-archive-item data-post-translation-group="translation:astro-blog-admin-deploy" data-post-language="ko" data-category="프로젝트 소개" data-tags="Astro|이미지 호스팅|배포" data-search="코드베이스 하나, 집 둘: 이미지 호스팅 이중 스토리지와 이중 플랫폼 배포 astro-blog-admin의 같은 코드가 Cloudflare Pages와 EdgeOne Pages 양쪽에 배포됩니다. 이미지 호스팅은 각 플랫폼의 자체 스토리지를 쓰면서도 완전히 같은 인터페이스와 링크 규칙을 제공합니다. 프로젝트 소개 Astro 이미지 호스팅 배포 astro-blog-admin에는 조금 특이한 배포 방식이 있습니다. 저장소 하나, 브랜치 하나를 Cloudflare Pages와 Tencent EdgeOne Pages 두 플랫폼에 동시에 배포해, 양쪽의 기능이 대등하고 인터페이스가 동일합니다. 이 글에서는 내장 이미지 호스팅이 두 플랫폼에 어떻게 자리 잡았는지, 그리고 이중 플랫폼이 개발에 주는 이점과 교훈을 다룹니다.
+
+## 이미지 호스팅: 올리고, 링크 받고, 그게 다
+
+### 공개 업로드 페이지
+
+사이트의 루트 경로는 로그인 없는 공개 업로드 페이지입니다. 이미지를 고르고, 올리고, 링크를 받는다——그뿐입니다. 관리를 보거나 설정을 만질 수는 없습니다. 관리 화면 안의 이미지 페이지에는 관리 기능이 더해집니다. 큰 미리보기, 체크박스 일괄 삭제, 라이트박스로 원본 크기 보기. 업로드할 때 PNG/JPG는 공간 절약을 위해 브라우저에서 먼저 WebP로 변환되고, 업로드 진행 상황은 페이지 위쪽의 가는 진행 바 여러 개로 표시되며 끝나면 자동으로 사라집니다.
+
+### 링크 규칙
+
+이미지 주소는 루트 상대 경로만 씁니다. `/<접두사>/<파일 이름>`, 도메인은 붙지 않습니다. 접두사는 설정에서 바꿀 수 있고 어떤 도메인으로 열든 상관없습니다——도메인이나 플랫폼을 바꿔도 글에 이미 적어 둔 이미지 주소는 그대로 동작합니다. 같은 이름의 파일을 다시 올리면 덮어쓰지 않고 자동으로 번호를 붙여 이름을 바꿉니다.
+
+## 이중 스토리지: 인터페이스 하나, 백엔드 둘
+
+### 스토리지 추상화 계층
+
+업로드, 읽기, 목록, 삭제는 모두 통일된 스토리지 계층을 거치며 설정에 따라 분기됩니다. Cloudflare 쪽에서는 바인딩된 R2 버킷을 우선 쓰고, 없으면 S3 호환 인터페이스를 쓰고, EdgeOne 쪽에서는 플랫폼 자체의 Blob 스토리지를 씁니다. 설정 페이지의 두 번째 스토리지 이름까지 플랫폼을 따릅니다. Cloudflare에서는 &#34;Cloudflare R2&#34;, EdgeOne에서는 &#34;EdgeOne Blob&#34;로 표시되지만 저장되는 설정 값은 같고, 양쪽은 서로 영향을 주지 않습니다.
+
+### 전환해도 마이그레이션은 없다
+
+두 스토리지는 독립적입니다. R2에 올린 이미지는 Blob으로 전환하면 보이지 않고, 되돌리면 다시 보입니다. 이 &#34;자동으로 이사하지 않는&#34; 설계는 의도적입니다——스토리지는 플랫폼의 자산이고, 코드의 일은 지금 돌아가고 있는 플랫폼에서 일을 제대로 처리하는 것이기 때문입니다.
+
+## 이중 플랫폼 배포
+
+### 빌드 시점의 플랫폼 판별
+
+빌드 명령은 양쪽이 같습니다. 코드는 빌드 시점에 플랫폼이 주입하는 표식 변수로 &#34;자기가 어디에 있는지&#34;를 판별해 그 결과를 결과물에 새기고, 실행 시에는 플랫폼별 스토리지와 설정 읽기 경로를 탑니다. 코드베이스 하나, 브랜치 하나, 배포 두 번. 비슷한 저장소 두 개를 유지할 필요가 없습니다.
+
+### 교훈: 변수 먼저, 코드는 나중
+
+이중 플랫폼의 가장 큰 함정은 코드가 아니라 설정에 있습니다. 환경 변수와 관련된 변경은 반드시 플랫폼 쪽에서 변수를 먼저 바꾸고 되읽어 검증한 다음 코드를 푸시해야 합니다——푸시가 곧 배포라, 순서가 반대면 운영 환경이 한동안 변수가 부족한 채로 돌게 되기 때문입니다. 각 플랫폼의 변수는 독립적이라 이 규율을 두 번 실행해야 합니다.
+
+여섯 편의 시리즈는 여기까지입니다. 블로그 본체, 다국어, 콘텐츠의 형태, 관리 화면 개요, 시각적 편집, 이미지 호스팅과 배포. 두 프로젝트 모두 오픈소스이니, GitHub 저장소에서 지금의 모습을 구경해 보세요." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-03T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-03 </time> <span class="archive-title" data-astro-cid-qma2cssl>코드베이스 하나, 집 둘: 이미지 호스팅 이중 스토리지와 이중 플랫폼 배포</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin의 같은 코드가 Cloudflare Pages와 EdgeOne Pages 양쪽에 배포됩니다. 이미지 호스팅은 각 플랫폼의 자체 스토리지를 쓰면서도 완전히 같은 인터페이스와 링크 규칙을 제공합니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>프로젝트 소개</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>이미지 호스팅</span><span class="archive-tag" data-astro-cid-qma2cssl>배포</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-deploy/" data-post-href="/astro-blog-admin-deploy/" data-archive-item data-post-translation-group="translation:astro-blog-admin-deploy" data-post-language="zh-Hans" data-category="项目介绍" data-tags="Astro|图床|部署" data-search="一套代码两个家：图床双存储与双平台部署 astro-blog-admin 同一份代码同时部署在 Cloudflare Pages 和 EdgeOne Pages 上；图床在两边各用自家存储，却给出一模一样的界面和链接规则。 项目介绍 Astro 图床 部署 astro-blog-admin 有一个不常见的部署方式：同一个仓库、同一个分支，同时部署在 Cloudflare Pages 和腾讯 EdgeOne Pages 两个平台上，两边功能对等、界面一致。这一篇聊它自带的图床是怎么在两个平台上落地的，以及双平台给开发带来的好处和教训。
+
+## 图床：上传，拿链接，就这么简单
+
+### 公开上传页
+
+站点根路径就是免登录的公开上传页：选图、上传、拿到链接，仅此而已，不能看管理、不能改设置。后台里的图床页则多了图片管理：大图预览、批量勾选删除、点开灯箱看大图。上传时 PNG/JPG 会在浏览器里先转成 WebP 再传，省空间；上传进度是页面顶部的多条细进度条，传完自动消失。
+
+### 链接规则
+
+图片地址只用根路径形式：`/<前缀>/<文件名>`，不带域名。前缀可以在设置里自定义，跟用哪个域名打开无关——换域名、换平台，文章里写好的图片地址都不用动。同名文件再传会自动改名加序号，不覆盖旧图。
+
+## 双存储：一套界面，两种后端
+
+### 存储层抽象
+
+图床的上传、读取、列表、删除都走统一的存储层，按配置分发：Cloudflare 侧优先用绑定的 R2 存储桶，没有绑定就走 S3 兼容接口；EdgeOne 侧用平台自带的 Blob 存储。设置页里第二档存储的叫法会按平台显示——在 Cloudflare 上叫 Cloudflare R2，在 EdgeOne 上叫 EdgeOne Blob，存的配置值不变，两边互不影响。
+
+### 切换不迁移
+
+两边存储各自独立：在 R2 里传的图，切到 Blob 是看不见的，切回来又在。这种“不自动搬家”的设计是故意的——存储是平台资产，代码只负责在当前平台把事办对。
+
+## 双平台部署
+
+### 构建时识别平台
+
+构建命令两边相同，代码在构建时自己判断身在何处（靠平台注入的标志变量），把结果烧进产物，运行时再按平台走不同的存储与配置读取。一份代码、一个分支、两次部署，不用维护两套近似的仓库。
+
+### 教训：先改变量，再推代码
+
+双平台最大的坑不在代码，在配置：涉及环境变量的改动，必须先在平台侧改好变量、回读验证，再推代码——因为推送即部署，顺序反了，线上就会有一段时间在缺变量的状态下运行。两个平台的环境变量各自独立，这条纪律要执行两遍。
+
+这个系列的六篇文章到这里就结束了：博客本体、多语言、内容形态、后台总览、可视化编辑、图床与部署。两个项目都是开源的，欢迎到 GitHub 仓库里看看它们现在的样子。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-03T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-03 </time> <span class="archive-title" data-astro-cid-qma2cssl>一套代码两个家：图床双存储与双平台部署</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin 同一份代码同时部署在 Cloudflare Pages 和 EdgeOne Pages 上；图床在两边各用自家存储，却给出一模一样的界面和链接规则。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>项目介绍</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>图床</span><span class="archive-tag" data-astro-cid-qma2cssl>部署</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-deploy/" data-post-href="/astro-blog-admin-deploy/" data-archive-item data-post-translation-group="translation:astro-blog-admin-deploy" data-post-language="zh-Hant" data-category="項目介紹" data-tags="Astro|圖床|部署" data-search="一套程式碼兩個家：圖床雙儲存與雙平台部署 astro-blog-admin 同一份程式碼同時部署在 Cloudflare Pages 和 EdgeOne Pages 上；圖床在兩邊各用自家儲存，卻給出一模一樣的介面和連結規則。 項目介紹 Astro 圖床 部署 astro-blog-admin 有一個不常見的部署方式：同一個倉庫、同一個分支，同時部署在 Cloudflare Pages 和騰訊 EdgeOne Pages 兩個平台上，兩邊功能對等、介面一致。這一篇聊它自帶的圖床是怎麼在兩個平台上落地的，以及雙平台給開發帶來的好處和教訓。
+
+## 圖床：上傳，拿連結，就這麼簡單
+
+### 公開上傳頁
+
+站點根路徑就是免登入的公開上傳頁：選圖、上傳、拿到連結，僅此而已，不能看管理、不能改設定。後台裡的圖床頁則多了圖片管理：大圖預覽、批量勾選刪除、點開燈箱看大圖。上傳時 PNG/JPG 會在瀏覽器裡先轉成 WebP 再傳，省空間；上傳進度是頁面頂部的多條細進度條，傳完自動消失。
+
+### 連結規則
+
+圖片地址只用根路徑形式：`/<前綴>/<檔案名>`，不帶域名。前綴可以在設定裡自訂，跟用哪個域名打開無關——換域名、換平台，文章裡寫好的圖片地址都不用動。同名檔案再傳會自動改名加序號，不覆蓋舊圖。
+
+## 雙儲存：一套介面，兩種後端
+
+### 儲存層抽象
+
+圖床的上傳、讀取、列表、刪除都走統一的儲存層，按配置分發：Cloudflare 側優先用綁定的 R2 儲存桶，沒有綁定就走 S3 相容介面；EdgeOne 側用平台自帶的 Blob 儲存。設定頁裡第二檔儲存的叫法會按平台顯示——在 Cloudflare 上叫 Cloudflare R2，在 EdgeOne 上叫 EdgeOne Blob，存的配置值不變，兩邊互不影響。
+
+### 切換不遷移
+
+兩邊儲存各自獨立：在 R2 裡傳的圖，切到 Blob 是看不見的，切回來又在。這種「不自動搬家」的設計是故意的——儲存是平台資產，程式碼只負責在目前平台把事辦對。
+
+## 雙平台部署
+
+### 建構時識別平台
+
+建構命令兩邊相同，程式碼在建構時自己判斷身在何處（靠平台注入的標誌變量），把結果燒進產物，執行時再按平台走不同的儲存與配置讀取。一份程式碼、一個分支、兩次部署，不用維護兩套近似的倉庫。
+
+### 教訓：先改變量，再推程式碼
+
+雙平台最大的坑不在程式碼，在配置：涉及環境變量的改動，必須先在平台側改好變量、回讀驗證，再推程式碼——因為推送即部署，順序反了，線上就會有一段時間在缺變量的狀態下執行。兩個平台的環境變量各自獨立，這條紀律要執行兩遍。
+
+這個系列的六篇文章到這裡就結束了：部落格本體、多語言、內容形態、後台總覽、可視化編輯、圖床與部署。兩個項目都是開源的，歡迎到 GitHub 倉庫裡看看它們現在的樣子。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-03T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-03 </time> <span class="archive-title" data-astro-cid-qma2cssl>一套程式碼兩個家：圖床雙儲存與雙平台部署</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin 同一份程式碼同時部署在 Cloudflare Pages 和 EdgeOne Pages 上；圖床在兩邊各用自家儲存，卻給出一模一樣的介面和連結規則。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>項目介紹</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>圖床</span><span class="archive-tag" data-astro-cid-qma2cssl>部署</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-editing/" data-post-href="/astro-blog-admin-editing/" data-archive-item data-post-translation-group="translation:astro-blog-admin-editing" data-post-language="en" data-category="Projects" data-tags="Astro|Admin Panel|Editor" data-search="Visual editing: change every site setting without touching code The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page. Projects Astro Admin Panel Editor All of the blog's site settings live in a few JSONC files: homepage modules, navigation, about, subscriptions, services — hundreds of fields, many of them multilingual. Editing those files directly is error-prone, and you cannot see what a change will look like. The variable editor in astro-blog-admin renders the configuration as card forms: you see human labels like &#34;Subtitle&#34; and &#34;Link URL&#34;, never raw JSON keys.
+
+## What the editor looks like
+
+### Card forms
+
+Configuration is split into cards by structure: one card per object, arrays as expandable entries, strings as inputs, booleans as switches, colors as a text field paired with a swatch. Adding a list item opens a dialog asking for its name first, instead of inserting an empty row; icon-grid lists (like carousel logos) get their own dedicated edit dialog.
+
+### Image fields with previews
+
+Every image-URL field shows its preview above the field's label, updating live as you type and hiding itself if the image fails to load. Icons and avatars preview in a 1:1 square with the whole image fitted inside, never cropped; regular images get a wide preview. You see the picture before you commit to it, so a mistyped URL is obvious at a glance.
+
+## Editing multilingual fields
+
+### The edit-language capsule
+
+Many fields hold not one sentence but five — one per language. At the top of the editor sits an &#34;Edit language&#34; capsule, the very same component as the post editor's: tap to switch, long-press and drag to pick a language. Whichever language is selected, every multilingual field on the page shows and edits only that language, and never overwrites the other translations.
+
+### Switching never refreshes or jitters
+
+Changing language swaps field values in place — no page rebuild, no scroll jump. Saving behaves the same way: it records the file's new version id and leaves the page exactly as it was, reporting success or failure through a small in-page toast. There is not a single native dialog anywhere in the admin that makes you click &#34;OK&#34;.
+
+## Saving rules
+
+The editor reads the source files from the repository and writes back through the API with version (sha) checking: if the file changed elsewhere, the save is refused with a prompt to reload instead of silently overwriting. One trade-off is worth stating plainly: visual saves drop the comments in JSONC files, which is why the editor keeps a &#34;raw text&#34; tab for hand-editing when comments matter.
+
+Next: the admin's other half — the image bed, and how one codebase runs on two platforms at once." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-02T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-02 </time> <span class="archive-title" data-astro-cid-qma2cssl>Visual editing: change every site setting without touching code</span> <p class="archive-description" data-astro-cid-qma2cssl>The settings editor in astro-blog-admin turns JSONC configuration into card forms — multilingual fields edited per language, image fields with previews, and a save button that never disturbs the page.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Projects</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>Admin Panel</span><span class="archive-tag" data-astro-cid-qma2cssl>Editor</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-editing/" data-post-href="/astro-blog-admin-editing/" data-archive-item data-post-translation-group="translation:astro-blog-admin-editing" data-post-language="ja" data-category="プロジェクト紹介" data-tags="Astro|管理画面|エディタ" data-search="ビジュアル編集：コードを知らなくても全設定が変えられる astro-blog-admin の設定エディタは JSONC 設定をカードフォームに変えます。多言語フィールドは言語ごとに編集でき、画像フィールドにはプレビューがあり、保存ボタンを押してもページは微動だにしません。 プロジェクト紹介 Astro 管理画面 エディタ ブログのサイト設定はすべて数個の JSONC ファイルの中にあります。トップページのモジュール、ナビゲーション、About、サブスクリプション、サービス……フィールドは数百個、その多くが多言語対応。ファイルを直接編集するのは間違いのもとですし、変えた結果がどう見えるかも分かりません。astro-blog-admin の変数エディタは、この設定をカードフォームとして描画します。目に入るのは JSON のキー名ではなく、「サブタイトル」「リンク URL」のような人間のためのラベルです。
+
+## エディタの見た目
+
+### カード式フォーム
+
+設定は構造に沿って自動でカードに分かれます。オブジェクトごとに 1 枚のカード、配列は展開できる項目の列、文字列は入力欄、真偽値はスイッチ、色はテキスト欄とスウォッチの二重入力。新規項目の追加では、空の行を先に入れるのではなく、まずダイアログで名前を入力させます。アイコングリッド系のリスト（カルーセルのロゴなど）には専用の編集ダイアログがあります。
+
+### 画像フィールドにはプレビュー
+
+画像 URL のフィールドはすべて、ラベルの上にプレビューを表示します。入力に合わせてリアルタイムに更新され、読み込みに失敗すれば自動で隠れます。アイコンとアバターのプレビューは 1:1 の正方形に全体を収めて切り取らず、通常の画像は横長のプレビューです。差し替える前に絵が見えるので、URL の貼り間違いは一目で分かります。
+
+## 多言語フィールドの編集方法
+
+### 編集言語カプセル
+
+多くのフィールドの値は 1 文ではなく、5 言語分の文言です。エディタ上部には「編集言語」カプセルがあり、記事エディタとまったく同じコンポーネントです。タップで切替、長押しでドラッグして言語を選べます。選んだ言語に合わせて、ページ上のすべての多言語フィールドはその言語だけを表示・編集し、他の言語の訳文を上書きすることは決してありません。
+
+### 切替でリフレッシュも揺れもなし
+
+言語切替はフィールドの値をその場で差し替えるだけ——ページの再構築もスクロールの飛びもありません。保存も同じです。新しいファイルバージョンを記録するだけでページ自体は一切リフレッシュされず、結果は画面内の小さなトーストで成功・失敗を知らせます。管理画面のどこにも、「OK」を押させるネイティブダイアログは存在しません。
+
+## 保存のルール
+
+エディタはリポジトリのソースファイルを読み、保存時は API 経由でバージョン（sha）を検証して書き戻します。ファイルが別の場所で変更されていれば、黙って上書きせず、再読み込みを促して保存を止めます。1 つ正直に言うべきトレードオフもあります。ビジュアル保存では JSONC ファイル内のコメントが失われるため、コメントが必要なときのために「生テキスト」タブを残し、手編集に戻れるようにしています。
+
+次回はこの管理画面のもう半分——画像ホスティングと、1 つのコードベースを 2 つのプラットフォームで動かすデプロイ方式です。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-02T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-02 </time> <span class="archive-title" data-astro-cid-qma2cssl>ビジュアル編集：コードを知らなくても全設定が変えられる</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin の設定エディタは JSONC 設定をカードフォームに変えます。多言語フィールドは言語ごとに編集でき、画像フィールドにはプレビューがあり、保存ボタンを押してもページは微動だにしません。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>プロジェクト紹介</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>管理画面</span><span class="archive-tag" data-astro-cid-qma2cssl>エディタ</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-editing/" data-post-href="/astro-blog-admin-editing/" data-archive-item data-post-translation-group="translation:astro-blog-admin-editing" data-post-language="ko" data-category="프로젝트 소개" data-tags="Astro|관리 화면|편집기" data-search="시각적 편집: 코드를 몰라도 모든 사이트 설정을 바꾸는 법 astro-blog-admin의 설정 편집기는 JSONC 설정을 카드 폼으로 바꿉니다. 다국어 필드는 언어별로 고칠 수 있고, 이미지 필드에는 미리보기가 있으며, 저장을 눌러도 페이지는 꿈쩍도 하지 않습니다. 프로젝트 소개 Astro 관리 화면 편집기 블로그의 사이트 설정은 전부 JSONC 파일 몇 개 안에 있습니다. 홈페이지 모듈, 내비게이션, 소개, 구독, 서비스…… 필드가 수백 개에 그중 다수가 다국어입니다. 파일을 직접 고치는 건 실수하기 쉽고, 고친 결과가 어떻게 보일지도 알 수 없습니다. astro-blog-admin의 변수 편집기는 이 설정을 카드 폼으로 그려 줍니다. 눈에 들어오는 것은 JSON 키 이름이 아니라 &#34;부제&#34;, &#34;링크 주소&#34; 같은 사람을 위한 라벨입니다.
+
+## 편집기의 모습
+
+### 카드식 폼
+
+설정은 구조를 따라 자동으로 카드로 나뉩니다. 객체마다 카드 한 장, 배열은 펼칠 수 있는 항목들, 문자열은 입력란, 불리언은 스위치, 색상은 텍스트 칸과 색상 견본의 이중 입력. 목록 항목을 추가할 때는 빈 행부터 넣지 않고 먼저 대화 상자로 이름을 입력하게 합니다. 아이콘 그리드 류의 목록(캐러셀 로고 등)에는 전용 편집 대화 상자가 있습니다.
+
+### 미리보기가 있는 이미지 필드
+
+이미지 주소 필드는 모두 필드 라벨 위에 미리보기를 표시하고, 입력하는 대로 실시간으로 갱신되며, 불러오기에 실패하면 스스로 숨습니다. 아이콘과 아바타의 미리보기는 1:1 정사각형에 전체를 잘리지 않게 담고, 일반 이미지는 가로로 긴 미리보기를 씁니다. 바꾸기 전에 그림이 보이니 주소를 잘못 붙여 넣어도 한눈에 알 수 있습니다.
+
+## 다국어 필드 편집법
+
+### 편집 언어 캡슐
+
+많은 필드의 값은 한 문장이 아니라 다섯 언어의 문구입니다. 편집기 위에는 &#34;편집 언어&#34; 캡슐이 있고, 글 편집기의 것과 완전히 같은 컴포넌트입니다. 눌러서 전환하고, 길게 눌러 드래그로 언어를 고릅니다. 어떤 언어를 고르든 페이지의 모든 다국어 필드는 그 언어만 보여 주고 고치며, 다른 언어의 번역문을 덮어쓰는 일은 결코 없습니다.
+
+### 전환해도 새로고침도 흔들림도 없다
+
+언어 전환은 필드 값을 그 자리에서 바꿀 뿐, 페이지를 다시 만들지도 스크롤이 튀지도 않습니다. 저장도 마찬가지입니다. 파일의 새 버전 번호를 기록할 뿐 페이지 자체는 새로고침되지 않고, 결과는 화면 안의 작은 알림으로 성공과 실패를 전합니다. 관리 화면 어디에도 &#34;확인&#34;을 눌러야 하는 시스템 대화 상자는 없습니다.
+
+## 저장 규칙
+
+편집기는 저장소의 원본 파일을 읽고, 저장할 때는 API를 통해 버전(sha)을 검증하며 다시 씁니다. 파일이 다른 곳에서 바뀌어 있으면 조용히 덮어쓰지 않고, 새로고침을 권하며 저장을 막습니다. 솔직히 말해야 할 트레이드오프도 하나 있습니다. 시각적 저장은 JSONC 파일 속 주석을 지워 버리므로, 주석이 필요할 때 손으로 고칠 수 있도록 &#34;원문 텍스트&#34; 탭을 남겨 두었습니다.
+
+다음 글에서는 이 관리 화면의 나머지 절반인 이미지 호스팅과, 하나의 코드베이스를 두 플랫폼에서 동시에 돌리는 배포 방식을 다룹니다." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-02T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-02 </time> <span class="archive-title" data-astro-cid-qma2cssl>시각적 편집: 코드를 몰라도 모든 사이트 설정을 바꾸는 법</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin의 설정 편집기는 JSONC 설정을 카드 폼으로 바꿉니다. 다국어 필드는 언어별로 고칠 수 있고, 이미지 필드에는 미리보기가 있으며, 저장을 눌러도 페이지는 꿈쩍도 하지 않습니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>프로젝트 소개</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>관리 화면</span><span class="archive-tag" data-astro-cid-qma2cssl>편집기</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-editing/" data-post-href="/astro-blog-admin-editing/" data-archive-item data-post-translation-group="translation:astro-blog-admin-editing" data-post-language="zh-Hans" data-category="项目介绍" data-tags="Astro|管理后台|编辑器" data-search="可视化编辑：不懂代码也能改全站设置 astro-blog-admin 的设置编辑器把 JSONC 配置变成卡片表单：多语言字段能逐个语言改，图片字段带预览，点保存页面纹丝不动。 项目介绍 Astro 管理后台 编辑器 博客的全站设置都在几个 JSONC 文件里：主页模块、导航、关于、订阅、服务……字段几百个，还带多语言。直接改文件既容易写错，也看不出改完长什么样。astro-blog-admin 的变量编辑器把这些配置渲染成卡片表单——你看到的是“子标题”“链接地址”这样的中文标签，而不是 JSON 的键名。
+
+## 编辑器长什么样
+
+### 卡片式表单
+
+配置按结构自动分卡：一个对象一张卡，数组是一条条可展开的条目，字符串是输入框，布尔值是开关，颜色是文本框加色块双输入。新增列表项会先弹窗让你把名字填好，而不是先塞一条空数据进去；图标网格类的列表（比如轮播标志）有专门的编辑弹窗。
+
+### 图片字段带预览
+
+凡是图片地址字段，预览图显示在字段子标题的上方，输入时实时更新，加载失败自动隐藏。图标和头像类的预览是 1:1 方图、完整装入不裁剪；普通图片是宽幅预览。换图之前先看到图，手滑贴错地址一眼就能发现。
+
+## 多语言字段怎么编辑
+
+### 编辑语言胶囊
+
+很多字段的值不是一句话，而是五种语言五份文案。编辑器顶部有一条「编辑语言」胶囊，和文章编辑器里的是同一套组件：点按切换、长按可以拖动选语言。选中哪个语言，页面上所有多语言字段就只显示和修改那个语言，绝不覆写其他语言的译文。
+
+### 切换不刷新、不抖动
+
+切换语言只就地更换字段的值，页面不重建、不滚动。点保存也是如此：保存只把新的文件版本号记下来，页面本身不刷新、不跳动，结果用站内的小提示条告知成功或失败——全站没有任何需要你点「确定」的系统弹窗。
+
+## 保存的规矩
+
+编辑器读的是仓库里的源文件，保存时经 API 写回并校验版本（sha）：如果文件在别处被改过，保存会被拦下并提示刷新，而不是默默覆盖。还有一个取舍要说清楚：可视化保存会丢掉 JSONC 文件里的注释，所以编辑器保留了「原始文本」页签，需要注释时可以切回去手改。
+
+下一篇是这个后台的另一半：图床，以及同一套代码同时跑在两个平台上的部署方式。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-02T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-02 </time> <span class="archive-title" data-astro-cid-qma2cssl>可视化编辑：不懂代码也能改全站设置</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin 的设置编辑器把 JSONC 配置变成卡片表单：多语言字段能逐个语言改，图片字段带预览，点保存页面纹丝不动。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>项目介绍</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>管理后台</span><span class="archive-tag" data-astro-cid-qma2cssl>编辑器</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-editing/" data-post-href="/astro-blog-admin-editing/" data-archive-item data-post-translation-group="translation:astro-blog-admin-editing" data-post-language="zh-Hant" data-category="項目介紹" data-tags="Astro|管理後台|編輯器" data-search="可視化編輯：不懂程式碼也能改全站設定 astro-blog-admin 的設定編輯器把 JSONC 配置變成卡片表單：多語言欄位能逐個語言改，圖片欄位帶預覽，點保存頁面紋絲不動。 項目介紹 Astro 管理後台 編輯器 部落格的全站設定都在幾個 JSONC 檔案裡：主頁模組、導航、關於、訂閱、服務……欄位幾百個，還帶多語言。直接改檔案既容易寫錯，也看不出改完長什麼樣。astro-blog-admin 的變量編輯器把這些配置渲染成卡片表單——你看到的是「子標題」「連結地址」這樣的中文標籤，而不是 JSON 的鍵名。
+
+## 編輯器長什麼樣
+
+### 卡片式表單
+
+配置按結構自動分卡：一個物件一張卡，陣列是一條條可展開的條目，字串是輸入框，布林值是開關，顏色是文字框加色塊雙輸入。新增列表項會先彈窗讓你把名字填好，而不是先塞一條空資料進去；圖標網格類的列表（比如輪播標誌）有專門的編輯彈窗。
+
+### 圖片欄位帶預覽
+
+凡是圖片地址欄位，預覽圖顯示在欄位子標題的上方，輸入時即時更新，載入失敗自動隱藏。圖標和頭像類的預覽是 1:1 方圖、完整裝入不裁剪；普通圖片是寬幅預覽。換圖之前先看到圖，手滑貼錯地址一眼就能發現。
+
+## 多語言欄位怎麼編輯
+
+### 編輯語言膠囊
+
+很多欄位的值不是一句話，而是五種語言五份文案。編輯器頂部有一條「編輯語言」膠囊，和文章編輯器裡的是同一套組件：點按切換、長按可以拖動選語言。選中哪個語言，頁面上所有多語言欄位就只顯示和修改那個語言，絕不覆寫其他語言的譯文。
+
+### 切換不刷新、不抖動
+
+切換語言只就地更換欄位的值，頁面不重建、不捲動。點保存也是如此：保存只把新的檔案版本號記下來，頁面本身不刷新、不跳動，結果用站內的小提示條告知成功或失敗——全站沒有任何需要你點「確定」的系統彈窗。
+
+## 保存的規矩
+
+編輯器讀的是倉庫裡的源檔案，保存時經 API 寫回並校驗版本（sha）：如果檔案在別處被改過，保存會被攔下並提示刷新，而不是默默覆蓋。還有一個取捨要說清楚：可視化保存會丟掉 JSONC 檔案裡的註釋，所以編輯器保留了「原始文字」頁籤，需要註釋時可以切回去手改。
+
+下一篇是這個後台的另一半：圖床，以及同一套程式碼同時跑在兩個平台上的部署方式。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-editing.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-02T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-02 </time> <span class="archive-title" data-astro-cid-qma2cssl>可視化編輯：不懂程式碼也能改全站設定</span> <p class="archive-description" data-astro-cid-qma2cssl>astro-blog-admin 的設定編輯器把 JSONC 配置變成卡片表單：多語言欄位能逐個語言改，圖片欄位帶預覽，點保存頁面紋絲不動。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>項目介紹</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>管理後台</span><span class="archive-tag" data-astro-cid-qma2cssl>編輯器</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-intro/" data-post-href="/astro-blog-admin-intro/" data-archive-item data-post-translation-group="translation:astro-blog-admin-intro" data-post-language="en" data-category="Projects" data-tags="Astro|Admin Panel|Open Source" data-search="astro-blog-admin: a real admin panel for a static blog Content-as-files should not mean editing files by hand forever. astro-blog-admin manages the whole site in the browser through the GitHub API — the blog stays purely static, the admin makes it pleasant. Projects Astro Admin Panel Open Source Everything in astro-blog is a file. That is great for backups and migration, but not entirely great for daily upkeep: changing one navigation label should not mean opening an editor, hunting for the file, and being careful not to break a format. astro-blog-admin exists for exactly that — an admin panel running on Cloudflare Pages / EdgeOne Pages where, once you log in, posts, notes, site settings and the image bed are all manageable in the browser, while the blog itself stays purely static with zero database.
+
+## Why a static blog needs an admin
+
+### The file advantage stays
+
+The admin does not change the content-as-files foundation. Every character it writes ends up as a commit in the blog repository: posts as Markdown files, settings as JSONC files. Stop using the admin one day, and the files are all still there, building as usual.
+
+### Daily maintenance should be easy
+
+Frequent operations should be a few clicks: publish a post, fix a slogan, swap a cover, add a homepage filter. Push those back into editors and command lines, and a blog soon goes quiet simply because updating it is a chore.
+
+## Login and security
+
+The admin signs you in with GitHub (OAuth via a GitHub App), and only the repository owner gets in. Signed out, admin entry points redirect to the login page, random public URLs are a 404, and unauthorized API calls are rejected outright. There is no home-grown account system — and therefore no password database to leak.
+
+## What it manages
+
+- **Posts**: lists, creation, editing and deletion across five language versions, draft and popular flags, with per-language deletion;
+- **Notes**: date changes, renames and the draft switch, all in one card;
+- **Page settings**: visual editing of every JSONC settings file — homepage, about, Apple subscriptions, services (the next article goes deeper);
+- **Image bed**: upload-and-get-a-link, image management, and a public upload page;
+- **Publishing**: every change is committed back to the blog repository through the GitHub API, and the hosting platform rebuilds and ships it.
+
+## How the two projects relate
+
+They are two separately deployed sites: the blog is a static site, the admin is an SSR app with a server side. The admin knows nothing about the blog's build internals — only the file conventions in the repository; the blog does not depend on the admin existing. That loose coupling lets either side be replaced or moved on its own.
+
+Next: the admin's core page, the visual settings editor." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-01T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-01 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog-admin: a real admin panel for a static blog</span> <p class="archive-description" data-astro-cid-qma2cssl>Content-as-files should not mean editing files by hand forever. astro-blog-admin manages the whole site in the browser through the GitHub API — the blog stays purely static, the admin makes it pleasant.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Projects</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>Admin Panel</span><span class="archive-tag" data-astro-cid-qma2cssl>Open Source</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-intro/" data-post-href="/astro-blog-admin-intro/" data-archive-item data-post-translation-group="translation:astro-blog-admin-intro" data-post-language="ja" data-category="プロジェクト紹介" data-tags="Astro|管理画面|オープンソース" data-search="astro-blog-admin：静的ブログに本物の管理画面を コンテンツがファイルであることは、永遠に手作業でファイルを編集するという意味ではありません。astro-blog-admin は GitHub API 経由でサイト全体をブラウザから管理します——ブログは純粋な静的のまま、管理画面が快適さを担います。 プロジェクト紹介 Astro 管理画面 オープンソース astro-blog のコンテンツはすべてファイルです。バックアップや移行には理想的ですが、日々の運用には少し不便です。ナビゲーションの文言 1 つ変えるのに、エディタを開き、ファイルを探し、書式を壊さないよう気を遣う——astro-blog-admin はまさにそのために作られました。Cloudflare Pages / EdgeOne Pages 上で動く管理画面で、ログインすれば記事、ノート、サイト設定、画像ホスティングのすべてをブラウザから管理でき、ブログ本体は純粋な静的・データベースなしのままです。
+
+## 静的ブログに管理画面が要る理由
+
+### ファイルの利点は揺るがない
+
+管理画面は「コンテンツ即ファイル」の基盤を変えません。書き込む文字はすべて、ブログのリポジトリへのコミットになります。記事は Markdown ファイル、設定は JSONC ファイル。いつか管理画面を使わなくなっても、ファイルはそのまま残り、ビルドは通常通り走ります。
+
+### 日々の運用は楽であるべき
+
+頻繁な操作は数クリックで済むべきです。記事を公開する、キャッチコピーを直す、カバーを差し替える、トップページに絞り込みを足す。それらをエディタとコマンドラインに押し戻せば、ブログは「更新が面倒」という理由で静かになっていきます。
+
+## ログインとセキュリティ
+
+ログインは GitHub（GitHub App の OAuth）で、入れるのはリポジトリの所有者だけ。未ログインでは管理入口はログインページへリダイレクトされ、適当な公開 URL は 404、未認可の API 呼び出しは拒否されます。独自のアカウント基盤を持たないので、漏れるパスワードデータベースも存在しません。
+
+## 管理できるもの
+
+- **記事**：5 言語版の一覧・新規作成・編集・削除、下書きと人気フラグ、言語版ごとの削除；
+- **ノート**：日付変更、リネーム、下書きスイッチを 1 枚のカードで；
+- **ページ設定**：トップページ、About、Apple サブスクリプション、サービスなど、すべての JSONC 設定のビジュアル編集（次回詳しく）；
+- **画像ホスティング**：アップロードしてリンク取得、画像管理、公開アップロードページ；
+- **公開**：すべての変更は GitHub API 経由でブログのリポジトリにコミットされ、ホスティングが自動で再ビルドして反映します。
+
+## 2 つのプロジェクトの関係
+
+両者は別々にデプロイされた 2 つのサイトです。ブログは静的サイト、管理画面はサーバー側を持つ SSR アプリ。管理画面はブログのビルド内部を知らず、リポジトリ内のファイル規約だけを知っています。ブログ側も管理画面の存在に依存しません。この疎結合により、どちら側も単独で置き換え・引っ越しができます。
+
+次回は管理画面の中核ページ、ビジュアル設定エディタに入ります。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-01T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-01 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog-admin：静的ブログに本物の管理画面を</span> <p class="archive-description" data-astro-cid-qma2cssl>コンテンツがファイルであることは、永遠に手作業でファイルを編集するという意味ではありません。astro-blog-admin は GitHub API 経由でサイト全体をブラウザから管理します——ブログは純粋な静的のまま、管理画面が快適さを担います。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>プロジェクト紹介</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>管理画面</span><span class="archive-tag" data-astro-cid-qma2cssl>オープンソース</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-intro/" data-post-href="/astro-blog-admin-intro/" data-archive-item data-post-translation-group="translation:astro-blog-admin-intro" data-post-language="ko" data-category="프로젝트 소개" data-tags="Astro|관리 화면|오픈소스" data-search="astro-blog-admin: 정적 블로그를 위한 진짜 관리 화면 콘텐츠가 파일이라는 말이 영원히 파일을 손으로 고치라는 뜻은 아닙니다. astro-blog-admin은 GitHub API를 통해 브라우저에서 사이트 전체를 관리합니다——블로그는 순수 정적으로 남고, 관리 화면이 편리함을 맡습니다. 프로젝트 소개 Astro 관리 화면 오픈소스 astro-blog의 콘텐츠는 전부 파일입니다. 백업과 이사에는 좋지만 일상적인 유지보수에는 전부가 좋지만은 않습니다. 내비게이션 문구 하나 바꾸자고 편집기를 열고, 파일을 찾고, 형식을 깨지 않으려 신경 써야 한다면 곤란합니다. astro-blog-admin은 바로 그 지점에서 만들어졌습니다——Cloudflare Pages / EdgeOne Pages 위에서 도는 관리 화면으로, 로그인하면 글, 노트, 사이트 설정, 이미지 호스팅까지 전부 브라우저에서 관리할 수 있고, 블로그 본체는 순수 정적·데이터베이스 없음으로 남습니다.
+
+## 정적 블로그에 관리 화면이 필요한 이유
+
+### 파일의 장점은 흔들리지 않는다
+
+관리 화면은 &#34;콘텐츠 즉 파일&#34;이라는 토대를 바꾸지 않습니다. 써넣는 모든 글자는 결국 블로그 저장소의 커밋이 됩니다. 글은 Markdown 파일, 설정은 JSONC 파일. 언젠가 관리 화면을 쓰지 않게 되어도 파일은 그대로 남아 정상적으로 빌드됩니다.
+
+### 일상 유지보수는 편해야 한다
+
+자주 하는 일은 몇 번의 클릭으로 끝나야 합니다. 글 발행, 문구 수정, 커버 교체, 홈페이지 필터 추가. 이런 일을 편집기와 명령줄로 되돌려 보내면 블로그는 &#34;업데이트가 귀찮아서&#34; 조용해지기 쉽습니다.
+
+## 로그인과 보안
+
+로그인은 GitHub(GitHub App의 OAuth)로 이뤄지며, 저장소 소유자만 들어올 수 있습니다. 로그아웃 상태에서는 관리 입구가 로그인 페이지로 이동하고, 임의의 공개 주소는 404이며, 인증 없는 API 호출은 거부됩니다. 자체 계정 시스템을 만들지 않으니 유출될 비밀번호 데이터베이스도 없습니다.
+
+## 관리할 수 있는 것
+
+- **글**: 다섯 언어 버전의 목록·작성·편집·삭제, 초안과 인기 표시, 언어 버전별 삭제;
+- **노트**: 날짜 변경, 이름 바꾸기, 초안 스위치를 한 장의 카드에서;
+- **페이지 설정**: 홈페이지, 소개, Apple 구독, 서비스 등 모든 JSONC 설정의 시각적 편집(다음 글에서 자세히);
+- **이미지 호스팅**: 업로드하고 링크 받기, 이미지 관리, 공개 업로드 페이지;
+- **발행**: 모든 변경은 GitHub API를 통해 블로그 저장소에 커밋되고, 호스팅 플랫폼이 자동으로 다시 빌드해 반영합니다.
+
+## 두 프로젝트의 관계
+
+둘은 따로 배포된 두 개의 사이트입니다. 블로그는 정적 사이트, 관리 화면은 서버 측을 가진 SSR 앱입니다. 관리 화면은 블로그의 빌드 내부 구조를 모르고 저장소 안의 파일 규약만 압니다. 블로그 역시 관리 화면의 존재에 의존하지 않습니다. 이 느슨한 결합 덕분에 어느 쪽이든 따로 교체하거나 이사할 수 있습니다.
+
+다음 글에서는 관리 화면의 핵심 페이지인 시각적 설정 편집기를 살펴봅니다." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-01T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-01 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog-admin: 정적 블로그를 위한 진짜 관리 화면</span> <p class="archive-description" data-astro-cid-qma2cssl>콘텐츠가 파일이라는 말이 영원히 파일을 손으로 고치라는 뜻은 아닙니다. astro-blog-admin은 GitHub API를 통해 브라우저에서 사이트 전체를 관리합니다——블로그는 순수 정적으로 남고, 관리 화면이 편리함을 맡습니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>프로젝트 소개</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>관리 화면</span><span class="archive-tag" data-astro-cid-qma2cssl>오픈소스</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-intro/" data-post-href="/astro-blog-admin-intro/" data-archive-item data-post-translation-group="translation:astro-blog-admin-intro" data-post-language="zh-Hans" data-category="项目介绍" data-tags="Astro|管理后台|开源项目" data-search="astro-blog-admin：给静态博客配一个真正的后台 内容即文件不等于只能用编辑器改文件。astro-blog-admin 通过 GitHub API 在浏览器里管理整站内容，博客保持纯静态，后台负责好用。 项目介绍 Astro 管理后台 开源项目 astro-blog 的内容全是文件，这对备份和迁移是好事，但对日常维护不完全是：改个导航文字要开编辑器、找文件、注意别写错格式。astro-blog-admin 就是为此而建的——一个跑在 Cloudflare Pages / EdgeOne Pages 上的管理后台，登录之后，文章、随记、站点设置、图床，全都能在浏览器里管，而博客本体依然保持纯静态、零数据库。
+
+## 静态博客为什么需要后台
+
+### 文件的优势不动摇
+
+后台不改变“内容即文件”的根基。它写入的每一个字，最终都会变成博客仓库里的一次提交：文章是 Markdown 文件，设置是 JSONC 文件。哪天不用后台了，文件原样都在，博客照常构建。
+
+### 日常维护要顺手
+
+高频操作应该是点几下就完成的事：发一篇文章、改一句标语、换一张封面、给首页加一个筛选。让这些事回到编辑器和命令行里去做，博客很快就会因为“懒得更新”而长草。
+
+## 登录与安全
+
+后台用 GitHub 账号登录（GitHub App 的 OAuth 流程），只有仓库所有者本人能进。未登录时后台入口跳登录页，公开地址乱输是 404，接口未授权一律拒绝。它不自建账号体系，也就没有密码库可泄。
+
+## 它能管什么
+
+- **文章**：五种语言版本的列表、新建、编辑、删除，草稿与热门标记，语言版本可以单独删改；
+- **随记**：改日期、改名、草稿开关，都在同一个卡片里；
+- **页面设置**：主页、关于、Apple 订阅、服务等全部 JSONC 设置的可视化编辑（下一篇细聊）；
+- **图床**：上传拿链接、图片管理、公开上传页；
+- **发布**：所有修改经 GitHub API 提交回博客仓库，托管平台自动重新构建上线。
+
+## 和博客的关系
+
+两个项目是分开部署的两个站点：博客是静态站，后台是带服务端能力的 SSR 应用。后台不知道博客的构建细节，只认仓库里的文件约定；博客也不依赖后台存在。这种松耦合让任何一边都可以单独替换、单独搬家。
+
+下一篇走进后台最核心的页面：可视化设置编辑器。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-01T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-01 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog-admin：给静态博客配一个真正的后台</span> <p class="archive-description" data-astro-cid-qma2cssl>内容即文件不等于只能用编辑器改文件。astro-blog-admin 通过 GitHub API 在浏览器里管理整站内容，博客保持纯静态，后台负责好用。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>项目介绍</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>管理后台</span><span class="archive-tag" data-astro-cid-qma2cssl>开源项目</span> </div> </div> </a><a class="archive-row" href="/astro-blog-admin-intro/" data-post-href="/astro-blog-admin-intro/" data-archive-item data-post-translation-group="translation:astro-blog-admin-intro" data-post-language="zh-Hant" data-category="項目介紹" data-tags="Astro|管理後台|開源項目" data-search="astro-blog-admin：給靜態部落格配一個真正的後台 內容即檔案不等於只能用編輯器改檔案。astro-blog-admin 透過 GitHub API 在瀏覽器裡管理整站內容，部落格保持純靜態，後台負責好用。 項目介紹 Astro 管理後台 開源項目 astro-blog 的內容全是檔案，這對備份和遷移是好事，但對日常維護不完全是：改個導航文字要開編輯器、找檔案、注意別寫錯格式。astro-blog-admin 就是為此而建的——一個跑在 Cloudflare Pages / EdgeOne Pages 上的管理後台，登入之後，文章、隨記、站點設定、圖床，全都能在瀏覽器裡管，而部落格本體依然保持純靜態、零資料庫。
+
+## 靜態部落格為什麼需要後台
+
+### 檔案的優勢不動搖
+
+後台不改變「內容即檔案」的根基。它寫入的每一個字，最終都會變成部落格倉庫裡的一次提交：文章是 Markdown 檔案，設定是 JSONC 檔案。哪天不用後台了，檔案原樣都在，部落格照常建構。
+
+### 日常維護要順手
+
+高頻操作應該是點幾下就完成的事：發一篇文章、改一句標語、換一張封面、給首頁加一個篩選。讓這些事回到編輯器和命令列裡去做，部落格很快就會因為「懶得更新」而長草。
+
+## 登入與安全
+
+後台用 GitHub 帳號登入（GitHub App 的 OAuth 流程），只有倉庫所有者本人能進。未登入時後台入口跳登入頁，公開地址亂輸是 404，介面未授權一律拒絕。它不自建帳號體系，也就沒有密碼庫可洩。
+
+## 它能管什麼
+
+- **文章**：五種語言版本的列表、新建、編輯、刪除，草稿與熱門標記，語言版本可以單獨刪改；
+- **隨記**：改日期、改名、草稿開關，都在同一個卡片裡；
+- **頁面設定**：主頁、關於、Apple 訂閱、服務等全部 JSONC 設定的可視化編輯（下一篇細聊）；
+- **圖床**：上傳拿連結、圖片管理、公開上傳頁；
+- **發布**：所有修改經 GitHub API 提交回部落格倉庫，託管平台自動重新建構上線。
+
+## 和部落格的關係
+
+兩個項目是分開部署的兩個站點：部落格是靜態站，後台是帶伺服器端能力的 SSR 應用。後台不知道部落格的建構細節，只認倉庫裡的檔案約定；部落格也不依賴後台存在。這種鬆耦合讓任何一邊都可以單獨替換、單獨搬家。
+
+下一篇走進後台最核心的頁面：可視化設定編輯器。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-admin-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-11-01T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-11-01 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog-admin：給靜態部落格配一個真正的後台</span> <p class="archive-description" data-astro-cid-qma2cssl>內容即檔案不等於只能用編輯器改檔案。astro-blog-admin 透過 GitHub API 在瀏覽器裡管理整站內容，部落格保持純靜態，後台負責好用。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>項目介紹</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>管理後台</span><span class="archive-tag" data-astro-cid-qma2cssl>開源項目</span> </div> </div> </a><a class="archive-row" href="/attention/" data-post-href="/attention/" data-archive-item data-post-translation-group="translation:markdown-content-showcase" data-post-language="en" data-category="Guides" data-tags="Markdown|Writing guide|Example" data-search="Markdown Content Showcase: From Headings to Media A ready-to-preview article template demonstrating heading levels, text formatting, lists, tables, code, and media. Guides Markdown Writing guide Example This is a **ready-to-use Markdown article example**. Use it to see how content appears on the site, then copy, edit, and replace it with your own. The headings, descriptions, and media URLs below are demonstration material.
+
+> Make the content clear first, then choose its formatting. Good formatting helps readers understand; it does not replace the content.
+
+## Article structure
+
+Use heading levels to organize topics. Start each section with an introduction, then add more specific subsections when needed.
+
+### A subsection under a topic
+
+This is a regular paragraph. Use paragraphs to introduce background, explain an idea, or preview what comes next. Leave a blank line between paragraphs.
+
+#### A more specific section
+
+Headings can be nested further. Use heading levels in order rather than skipping levels just to change the font size.
+
+##### Inline text formatting
+
+The body supports **bold**, *italic*, ~~strikethrough~~, `inline code`, and [regular links](https://example.com). Use these to highlight terms, command names, or references.
+
+## Lists and quotes
+
+### Unordered list
+
+- First item: list a point or material.
+- Second item: an item can be a complete sentence.
+- Third item: indent two spaces for nested items:
+  - Sub-item A
+  - Sub-item B
+
+### Ordered list
+
+1. Identify the problem to solve.
+2. Explain the process step by step.
+3. Summarize the result or what to do next.
+
+### Task list
+
+- [x] Add a title and summary
+- [x] Create the article structure
+- [ ] Replace the sample with your own content
+
+## Tables
+
+Tables work well for short, comparable information:
+
+| Content type | Good for | Example |
+| --- | --- | --- |
+| Paragraph | Introduction and explanation | Background |
+| List | Related points | Preparation |
+| Code | Technical examples | Configuration |
+
+## Code
+
+Use inline code for commands such as `npm run build`. Add a language identifier to a fenced code block for syntax highlighting:
+
+```ts
+type Article = {
+  title: string;
+  published: boolean;
+};
+
+const example: Article = {
+  title: &#34;Markdown Content Showcase&#34;,
+  published: true,
+};
+
+console.log(example.title);
+```
+
+You can use other language identifiers, such as Shell:
+
+```bash
+npm install
+npm run dev
+```
+
+## Images and media
+
+### Images
+
+Insert images with Markdown. This example uses the site avatar; replace it with an image from the `public/` directory when writing your own article.
+
+![Site image example](/images/avatar.webp)
+
+Use HTML when you need a specific size or CSS class:
+
+<img class=&#34;square-image&#34; src=&#34;/images/avatar.webp&#34; alt=&#34;Square image example&#34; />
+
+### Audio
+
+Use the HTML `<audio>` element for audio. Replace the sample URL with an audio file you have permission to use:
+
+<audio controls preload=&#34;none&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3&#34; type=&#34;audio/mpeg&#34; />
+  Your browser does not support audio playback.
+</audio>
+
+### Video files
+
+Use `<video>` to play a video file. Replace `src` with a local media path or an accessible video URL:
+
+<video controls preload=&#34;metadata&#34; poster=&#34;https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&#38;fit=crop&#38;w=1200&#38;q=80&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4&#34; type=&#34;video/mp4&#34; />
+  Your browser does not support video playback.
+</video>
+
+### Embedded video
+
+Some video platforms provide iframe embed code. This example uses YouTube's privacy-enhanced mode; replace the video ID and check that embedding is allowed before publishing:
+
+<div class=&#34;video-embed&#34;>
+  <iframe
+    src=&#34;https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ&#34;
+    title=&#34;Embedded video example&#34;
+    width=&#34;1280&#34;
+    height=&#34;720&#34;
+    loading=&#34;lazy&#34;
+    allow=&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;
+    referrerpolicy=&#34;strict-origin-when-cross-origin&#34;
+    allowfullscreen
+  ></iframe>
+</div>
+
+## Extra notes
+
+Use collapsible content for supplementary explanations, or remove it when not needed:
+
+<details>
+  <summary>Show a supplementary note</summary>
+  <p>Use this space for terminology, extra tips, or details that are not essential to the main text.</p>
+</details>
+
+## In summary
+
+An article can combine an introduction, sections at different heading levels, media, and a conclusion. You do not need to use every component; choose the format that suits the content. Remember to replace the text, images, and media URLs in this example." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/demo_attention.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-31T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-31 </time> <span class="archive-title" data-astro-cid-qma2cssl>Markdown Content Showcase: From Headings to Media</span> <p class="archive-description" data-astro-cid-qma2cssl>A ready-to-preview article template demonstrating heading levels, text formatting, lists, tables, code, and media.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Guides</span> <span class="archive-tag" data-astro-cid-qma2cssl>Markdown</span><span class="archive-tag" data-astro-cid-qma2cssl>Writing guide</span><span class="archive-tag" data-astro-cid-qma2cssl>Example</span> </div> </div> </a><a class="archive-row" href="/attention/" data-post-href="/attention/" data-archive-item data-post-translation-group="translation:markdown-content-showcase" data-post-language="ja" data-category="ガイド" data-tags="Markdown|文章作成|サンプル" data-search="Markdownコンテンツ例：見出しからメディアまで 見出し、文字装飾、リスト、表、コード、メディアなど、記事テンプレートで使える書式を紹介します。 ガイド Markdown 文章作成 サンプル これは**そのままプレビューできるMarkdown記事のサンプル**です。サイト上での表示を確認し、コピーして自分の記事に合わせて編集できます。見出しや説明、メディアのURLはすべて例です。
+
+> まず内容をわかりやすく書き、そのあとで書式を選びましょう。適切なレイアウトは理解を助けますが、内容そのものの代わりにはなりません。
+
+## 記事の構成
+
+見出しのレベルを使ってテーマを整理できます。各セクションに導入を書き、必要に応じて小見出しで詳しく説明しましょう。
+
+### テーマの下にある小見出し
+
+これは通常の段落です。背景を紹介したり、考えを説明したり、次に扱う内容を示したりできます。段落の間には空行を入れます。
+
+#### さらに詳しい小節
+
+見出しはさらに細分化できます。文字サイズを変えるためにレベルを飛ばさず、順番に使いましょう。
+
+##### インラインの文字装飾
+
+本文では**太字**、*斜体*、~~取り消し線~~、`インラインコード`、[通常のリンク](https://example.com)を使えます。キーワードやコマンド、参考資料を示すのに便利です。
+
+## リストと引用
+
+### 箇条書き
+
+- 1つ目：要点や材料を列挙します。
+- 2つ目：各項目を文章にしても構いません。
+- 3つ目：2つのスペースでインデントすると、入れ子にできます。
+  - サブ項目 A
+  - サブ項目 B
+
+### 番号付きリスト
+
+1. 解決したい問題を決めます。
+2. 手順を順番に説明します。
+3. 結果や次の行動をまとめます。
+
+### タスクリスト
+
+- [x] タイトルと概要を用意
+- [x] 記事の構成を作成
+- [ ] 自分の内容に置き換える
+
+## 表
+
+短く比較できる情報には表が便利です。
+
+| コンテンツ | 用途 | 例 |
+| --- | --- | --- |
+| 段落 | 紹介と説明 | 背景 |
+| リスト | 関連する項目 | 準備 |
+| コード | 技術的な例 | 設定 |
+
+## コード
+
+`npm run build` のようなコマンドはインラインコードで示せます。コードブロックには言語名を付けると、シンタックスハイライトが使われます。
+
+```ts
+type Article = {
+  title: string;
+  published: boolean;
+};
+
+const example: Article = {
+  title: &#34;Markdownコンテンツ例&#34;,
+  published: true,
+};
+
+console.log(example.title);
+```
+
+Shellなど、ほかの言語も指定できます。
+
+```bash
+npm install
+npm run dev
+```
+
+## 画像とメディア
+
+### 画像
+
+Markdown記法で画像を挿入できます。次の例ではサイト内のアバターを使っています。自分の記事では `public/` 内の画像に置き換えてください。
+
+![サイト画像の例](/images/avatar.webp)
+
+サイズやCSSクラスを指定する場合はHTMLも使えます。
+
+<img class=&#34;square-image&#34; src=&#34;/images/avatar.webp&#34; alt=&#34;正方形画像の例&#34; />
+
+### 音声
+
+音声にはHTMLの `<audio>` 要素を使います。公開する際は、利用許可のある音声ファイルに置き換えてください。
+
+<audio controls preload=&#34;none&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3&#34; type=&#34;audio/mpeg&#34; />
+  お使いのブラウザーは音声再生に対応していません。
+</audio>
+
+### 動画ファイル
+
+`<video>` で動画を再生できます。`src` はローカルのメディアパス、またはアクセス可能な動画URLに置き換えてください。
+
+<video controls preload=&#34;metadata&#34; poster=&#34;https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&#38;fit=crop&#38;w=1200&#38;q=80&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4&#34; type=&#34;video/mp4&#34; />
+  お使いのブラウザーは動画再生に対応していません。
+</video>
+
+### 埋め込み動画
+
+動画サービスによってはiframeの埋め込みコードが提供されています。次の例はYouTubeのプライバシー強化モードです。公開前に動画IDを置き換え、埋め込みが許可されているか確認してください。
+
+<div class=&#34;video-embed&#34;>
+  <iframe
+    src=&#34;https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ&#34;
+    title=&#34;埋め込み動画の例&#34;
+    width=&#34;1280&#34;
+    height=&#34;720&#34;
+    loading=&#34;lazy&#34;
+    allow=&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;
+    referrerpolicy=&#34;strict-origin-when-cross-origin&#34;
+    allowfullscreen
+  ></iframe>
+</div>
+
+## 補足
+
+折りたたみ表示は補足説明に便利です。必要なければ削除できます。
+
+<details>
+  <summary>クリックして補足を表示</summary>
+  <p>用語の説明や追加のヒントなど、本文の流れに影響しない内容を記載できます。</p>
+</details>
+
+## まとめ
+
+記事には導入、複数レベルの見出し、メディア、まとめを組み合わせられます。すべての要素を使う必要はありません。内容に合った書式を選び、このサンプルの文章、画像、メディアURLを忘れずに置き換えてください。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/demo_attention.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-31T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-31 </time> <span class="archive-title" data-astro-cid-qma2cssl>Markdownコンテンツ例：見出しからメディアまで</span> <p class="archive-description" data-astro-cid-qma2cssl>見出し、文字装飾、リスト、表、コード、メディアなど、記事テンプレートで使える書式を紹介します。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>ガイド</span> <span class="archive-tag" data-astro-cid-qma2cssl>Markdown</span><span class="archive-tag" data-astro-cid-qma2cssl>文章作成</span><span class="archive-tag" data-astro-cid-qma2cssl>サンプル</span> </div> </div> </a><a class="archive-row" href="/attention/" data-post-href="/attention/" data-archive-item data-post-translation-group="translation:markdown-content-showcase" data-post-language="ko" data-category="가이드" data-tags="Markdown|글쓰기 가이드|예제" data-search="Markdown 콘텐츠 예제: 제목부터 미디어까지 제목 단계, 텍스트 서식, 목록, 표, 코드와 미디어 등 글 템플릿에서 사용할 수 있는 형식을 소개합니다. 가이드 Markdown 글쓰기 가이드 예제 이 글은 **바로 미리 볼 수 있는 Markdown 예제 문서**입니다. 사이트에서 콘텐츠가 어떻게 보이는지 확인한 다음 복사하고 수정해 자신의 글로 바꿔 보세요. 제목과 설명, 미디어 주소는 모두 예시입니다.
+
+> 먼저 내용을 명확하게 쓴 뒤 형식을 고르세요. 알맞은 서식은 이해를 돕지만 내용 자체를 대신하지는 않습니다.
+
+## 글의 구성
+
+제목 단계를 사용해 주제를 나눌 수 있습니다. 각 섹션에서 먼저 간단히 소개하고 필요한 경우 하위 제목으로 더 자세히 설명하세요.
+
+### 주제 아래의 하위 제목
+
+일반 문단입니다. 배경을 소개하거나 개념을 설명하고, 이어질 내용을 간단히 안내할 수 있습니다. 문단 사이에는 빈 줄을 둡니다.
+
+#### 더 세부적인 소제목
+
+제목은 여러 단계로 나눌 수 있습니다. 글자 크기를 바꾸기 위해 단계를 건너뛰지 말고 순서대로 사용하세요.
+
+##### 인라인 텍스트 서식
+
+본문에서는 **굵게**, *기울임*, ~~취소선~~, `인라인 코드`, [일반 링크](https://example.com)를 사용할 수 있습니다. 키워드나 명령어, 참고 자료를 표시할 때 유용합니다.
+
+## 목록과 인용
+
+### 글머리 기호 목록
+
+- 첫 번째 항목: 요점이나 자료를 나열합니다.
+- 두 번째 항목: 각 항목을 완전한 문장으로 써도 됩니다.
+- 세 번째 항목: 두 칸 들여쓰기로 중첩 목록을 만들 수 있습니다.
+  - 하위 항목 A
+  - 하위 항목 B
+
+### 번호 목록
+
+1. 해결할 문제를 정합니다.
+2. 과정을 순서대로 설명합니다.
+3. 결과나 다음 행동을 정리합니다.
+
+### 작업 목록
+
+- [x] 제목과 요약 작성
+- [x] 글 구조 추가
+- [ ] 실제 내용으로 바꾸기
+
+## 표
+
+짧고 비교 가능한 정보를 보여줄 때 표를 사용하면 좋습니다.
+
+| 콘텐츠 유형 | 용도 | 예시 |
+| --- | --- | --- |
+| 문단 | 소개와 설명 | 배경 설명 |
+| 목록 | 관련 항목 | 준비 사항 |
+| 코드 | 기술 예제 | 설정 코드 |
+
+## 코드
+
+`npm run build` 같은 명령어는 인라인 코드로 표시할 수 있습니다. 코드 블록에 언어를 지정하면 구문 강조가 적용됩니다.
+
+```ts
+type Article = {
+  title: string;
+  published: boolean;
+};
+
+const example: Article = {
+  title: &#34;Markdown 콘텐츠 예제&#34;,
+  published: true,
+};
+
+console.log(example.title);
+```
+
+Shell 등 다른 언어도 지정할 수 있습니다.
+
+```bash
+npm install
+npm run dev
+```
+
+## 이미지와 미디어
+
+### 이미지
+
+Markdown 문법으로 이미지를 넣을 수 있습니다. 아래 예시는 사이트 아바타를 사용하므로, 직접 작성할 때는 `public/` 폴더의 이미지로 바꾸세요.
+
+![사이트 이미지 예제](/images/avatar.webp)
+
+크기나 CSS 클래스를 지정해야 한다면 HTML도 사용할 수 있습니다.
+
+<img class=&#34;square-image&#34; src=&#34;/images/avatar.webp&#34; alt=&#34;정사각형 이미지 예제&#34; />
+
+### 오디오
+
+오디오에는 HTML `<audio>` 요소를 사용합니다. 게시할 때는 사용 권한이 있는 오디오 파일로 주소를 바꾸세요.
+
+<audio controls preload=&#34;none&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3&#34; type=&#34;audio/mpeg&#34; />
+  브라우저에서 오디오를 재생할 수 없습니다.
+</audio>
+
+### 동영상 파일
+
+`<video>` 요소로 동영상을 재생할 수 있습니다. `src`를 로컬 미디어 경로나 접근 가능한 동영상 주소로 바꾸세요.
+
+<video controls preload=&#34;metadata&#34; poster=&#34;https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&#38;fit=crop&#38;w=1200&#38;q=80&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4&#34; type=&#34;video/mp4&#34; />
+  브라우저에서 동영상을 재생할 수 없습니다.
+</video>
+
+### 동영상 임베드
+
+일부 동영상 서비스는 iframe 임베드 코드를 제공합니다. 아래는 YouTube 개인정보 보호 강화 모드 예제입니다. 게시 전에 동영상 ID를 바꾸고 임베드가 허용되는지 확인하세요.
+
+<div class=&#34;video-embed&#34;>
+  <iframe
+    src=&#34;https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ&#34;
+    title=&#34;동영상 임베드 예제&#34;
+    width=&#34;1280&#34;
+    height=&#34;720&#34;
+    loading=&#34;lazy&#34;
+    allow=&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;
+    referrerpolicy=&#34;strict-origin-when-cross-origin&#34;
+    allowfullscreen
+  ></iframe>
+</div>
+
+## 추가 설명
+
+접을 수 있는 영역은 보충 설명에 적합합니다. 필요하지 않으면 삭제해도 됩니다.
+
+<details>
+  <summary>눌러서 보충 설명 보기</summary>
+  <p>용어 설명, 추가 팁 또는 본문 흐름에 꼭 필요하지 않은 내용을 넣을 수 있습니다.</p>
+</details>
+
+## 마무리
+
+글에는 도입부, 여러 단계의 제목, 미디어와 마무리를 조합할 수 있습니다. 모든 요소를 사용할 필요는 없습니다. 내용에 알맞은 형식을 고르고, 이 예제의 문장과 이미지, 미디어 주소를 실제 내용으로 바꾸세요." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/demo_attention.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-31T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-31 </time> <span class="archive-title" data-astro-cid-qma2cssl>Markdown 콘텐츠 예제: 제목부터 미디어까지</span> <p class="archive-description" data-astro-cid-qma2cssl>제목 단계, 텍스트 서식, 목록, 표, 코드와 미디어 등 글 템플릿에서 사용할 수 있는 형식을 소개합니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>가이드</span> <span class="archive-tag" data-astro-cid-qma2cssl>Markdown</span><span class="archive-tag" data-astro-cid-qma2cssl>글쓰기 가이드</span><span class="archive-tag" data-astro-cid-qma2cssl>예제</span> </div> </div> </a><a class="archive-row" href="/attention/" data-post-href="/attention/" data-archive-item data-post-translation-group="translation:markdown-content-showcase" data-post-language="zh-Hans" data-category="使用指南" data-tags="Markdown|写作指南|示例" data-search="Markdown 内容示例：从标题到多媒体 这是一篇可直接预览的文章模板示例，展示常见标题层级、文字格式、列表、表格、代码和多媒体内容。 使用指南 Markdown 写作指南 示例 这是一篇**可直接使用的 Markdown 示例文档**。你可以从中了解文章在网站上的呈现方式，再复制、删改并替换成自己的内容。文中的标题、说明和媒体地址都是演示素材。
+
+> 写作时先把内容讲清楚，再考虑格式。合适的排版能帮助读者理解，而不是取代内容本身。
+
+## 文章结构
+
+文章可以用不同层级的标题划分主题。每个标题下面都可以先写一段介绍，再继续细分内容。
+
+### 二级主题下的子标题
+
+这是一个普通段落。这里可以介绍背景、解释概念，或用几句话说明接下来要讨论什么。段落之间留一个空行即可。
+
+#### 更深一层的小节
+
+标题层级可以继续细分。建议按顺序使用标题，不要为了字号跳过层级。
+
+##### 行内文字格式
+
+正文支持**粗体**、*斜体*、~~删除线~~、`行内代码`和[普通链接](https://example.com)。这些格式适合标出关键词、程序名称或相关资料。
+
+## 列表与引用
+
+### 无序列表
+
+- 第一项：列出要点或材料。
+- 第二项：每一项可以写成完整句子。
+- 第三项：需要嵌套时缩进两个空格：
+  - 子项目 A
+  - 子项目 B
+
+### 有序列表
+
+1. 先确定要解决的问题。
+2. 再按步骤说明过程。
+3. 最后总结结果或下一步行动。
+
+### 任务清单
+
+- [x] 写好标题和简介
+- [x] 添加正文结构
+- [ ] 替换成自己的真实内容
+
+## 表格
+
+表格适合展示简短、可比较的信息：
+
+| 内容类型 | 适用场景 | 示例 |
+| --- | --- | --- |
+| 段落 | 介绍和解释 | 背景说明 |
+| 列表 | 并列要点 | 准备材料 |
+| 代码 | 技术示例 | 配置片段 |
+
+## 代码
+
+在行内代码中可以写 `npm run build`。多行代码块可以指定语言，以启用语法高亮：
+
+```ts
+type Article = {
+  title: string;
+  published: boolean;
+};
+
+const example: Article = {
+  title: &#34;Markdown 内容示例&#34;,
+  published: true,
+};
+
+console.log(example.title);
+```
+
+也可以使用其他语言标记，例如 Shell：
+
+```bash
+npm install
+npm run dev
+```
+
+## 图片与媒体
+
+### 图片
+
+图片可使用 Markdown 语法插入。下例使用项目自带的头像图片，写文章时可换成 `public/` 目录里的其他图片路径。
+
+![项目图片示例](/images/avatar.webp)
+
+需要调整尺寸或添加 CSS 类时，也可以使用 HTML：
+
+<img class=&#34;square-image&#34; src=&#34;/images/avatar.webp&#34; alt=&#34;方形图片示例&#34; />
+
+### 音频
+
+使用 HTML 的 `<audio>` 元素添加音频。请将示例地址替换为自己有权使用的音频文件：
+
+<audio controls preload=&#34;none&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3&#34; type=&#34;audio/mpeg&#34; />
+  您的浏览器不支持音频播放。
+</audio>
+
+### 视频文件
+
+使用 `<video>` 播放视频文件。把 `src` 换成本地媒体路径或可访问的视频地址：
+
+<video controls preload=&#34;metadata&#34; poster=&#34;https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&#38;fit=crop&#38;w=1200&#38;q=80&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4&#34; type=&#34;video/mp4&#34; />
+  您的浏览器不支持视频播放。
+</video>
+
+### 视频嵌入
+
+部分视频平台提供 iframe 嵌入代码。下面以 YouTube 隐私增强模式为例；发布前请替换视频 ID，并确认平台允许嵌入：
+
+<div class=&#34;video-embed&#34;>
+  <iframe
+    src=&#34;https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ&#34;
+    title=&#34;视频嵌入示例&#34;
+    width=&#34;1280&#34;
+    height=&#34;720&#34;
+    loading=&#34;lazy&#34;
+    allow=&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;
+    referrerpolicy=&#34;strict-origin-when-cross-origin&#34;
+    allowfullscreen
+  ></iframe>
+</div>
+
+## 补充说明
+
+可折叠内容适合放置补充解释，不需要时也可以直接删除：
+
+<details>
+  <summary>点击展开补充说明</summary>
+  <p>这里可以放置术语解释、额外提示或不影响主线阅读的内容。</p>
+</details>
+
+## 写作小结
+
+一篇完整的文章可以由介绍、多个层级的章节、媒体和结尾组成。写作时不需要把所有组件都用上，选择最适合内容的格式即可。完成后，记得替换这篇示例中的文本、图片和媒体地址。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/demo_attention.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-31T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-31 </time> <span class="archive-title" data-astro-cid-qma2cssl>Markdown 内容示例：从标题到多媒体</span> <p class="archive-description" data-astro-cid-qma2cssl>这是一篇可直接预览的文章模板示例，展示常见标题层级、文字格式、列表、表格、代码和多媒体内容。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>使用指南</span> <span class="archive-tag" data-astro-cid-qma2cssl>Markdown</span><span class="archive-tag" data-astro-cid-qma2cssl>写作指南</span><span class="archive-tag" data-astro-cid-qma2cssl>示例</span> </div> </div> </a><a class="archive-row" href="/attention/" data-post-href="/attention/" data-archive-item data-post-translation-group="translation:markdown-content-showcase" data-post-language="zh-Hant" data-category="使用指南" data-tags="Markdown|寫作指南|範例" data-search="Markdown 內容範例：從標題到多媒體 這是一篇可直接預覽的文章範本，展示常見標題層級、文字格式、清單、表格、程式碼與多媒體內容。 使用指南 Markdown 寫作指南 範例 這是一篇**可直接預覽的 Markdown 文章範例**。你可以先查看內容在網站上的呈現方式，再複製、修改並替換成自己的文章。文中的標題、說明與媒體網址皆為示範素材。
+
+> 先把內容說清楚，再選擇合適的格式。良好的排版可以幫助讀者理解，但不能取代內容本身。
+
+## 文章結構
+
+可以使用不同層級的標題來整理主題。每個章節都可以先簡單介紹，再視需要使用子標題補充細節。
+
+### 主題下的子標題
+
+這是一個一般段落。你可以介紹背景、解釋概念，或簡單說明接下來要討論的內容。段落之間留一個空行即可。
+
+#### 更細一層的小節
+
+標題可以繼續細分。建議依序使用標題層級，不要只為了改變字體大小而跳級。
+
+##### 行內文字格式
+
+內文支援**粗體**、*斜體*、~~刪除線~~、`行內程式碼`和[一般連結](https://example.com)。適合標示關鍵詞、指令名稱或參考資料。
+
+## 清單與引用
+
+### 無序清單
+
+- 第一項：列出重點或材料。
+- 第二項：每個項目也可以寫成完整句子。
+- 第三項：縮排兩個空格可建立巢狀項目：
+  - 子項目 A
+  - 子項目 B
+
+### 有序清單
+
+1. 先確定要解決的問題。
+2. 再依序說明處理步驟。
+3. 最後整理結果或下一步行動。
+
+### 任務清單
+
+- [x] 撰寫標題與摘要
+- [x] 建立文章結構
+- [ ] 替換成自己的實際內容
+
+## 表格
+
+表格適合呈現簡短且可比較的資訊：
+
+| 內容類型 | 適用情境 | 範例 |
+| --- | --- | --- |
+| 段落 | 介紹與說明 | 背景資訊 |
+| 清單 | 相關要點 | 準備事項 |
+| 程式碼 | 技術範例 | 設定片段 |
+
+## 程式碼
+
+像 `npm run build` 這類指令可以使用行內程式碼。程式碼區塊可以指定語言，以顯示語法上色：
+
+```ts
+type Article = {
+  title: string;
+  published: boolean;
+};
+
+const example: Article = {
+  title: &#34;Markdown 內容範例&#34;,
+  published: true,
+};
+
+console.log(example.title);
+```
+
+也可以指定 Shell 等其他語言：
+
+```bash
+npm install
+npm run dev
+```
+
+## 圖片與媒體
+
+### 圖片
+
+可以使用 Markdown 語法插入圖片。以下範例使用網站內的頭像，撰寫自己的文章時可替換成 `public/` 目錄中的其他圖片。
+
+![網站圖片範例](/images/avatar.webp)
+
+若需要指定尺寸或 CSS 類別，也可以使用 HTML：
+
+<img class=&#34;square-image&#34; src=&#34;/images/avatar.webp&#34; alt=&#34;方形圖片範例&#34; />
+
+### 音訊
+
+使用 HTML `<audio>` 元素加入音訊。發布時請替換成自己有權使用的音訊檔案：
+
+<audio controls preload=&#34;none&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3&#34; type=&#34;audio/mpeg&#34; />
+  您的瀏覽器不支援音訊播放。
+</audio>
+
+### 影片檔案
+
+使用 `<video>` 播放影片。請將 `src` 替換成網站中的媒體路徑或可存取的影片網址：
+
+<video controls preload=&#34;metadata&#34; poster=&#34;https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&#38;fit=crop&#38;w=1200&#38;q=80&#34;>
+  <source src=&#34;https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4&#34; type=&#34;video/mp4&#34; />
+  您的瀏覽器不支援影片播放。
+</video>
+
+### 嵌入影片
+
+部分影片平台會提供 iframe 嵌入程式碼。以下使用 YouTube 隱私權強化模式；發布前請替換影片 ID，並確認平台允許嵌入：
+
+<div class=&#34;video-embed&#34;>
+  <iframe
+    src=&#34;https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ&#34;
+    title=&#34;嵌入影片範例&#34;
+    width=&#34;1280&#34;
+    height=&#34;720&#34;
+    loading=&#34;lazy&#34;
+    allow=&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;
+    referrerpolicy=&#34;strict-origin-when-cross-origin&#34;
+    allowfullscreen
+  ></iframe>
+</div>
+
+## 補充說明
+
+可收合區塊適合放置額外說明，不需要時也可以直接刪除：
+
+<details>
+  <summary>點擊展開補充說明</summary>
+  <p>這裡可以補充術語解釋、額外提示，或不影響主要閱讀脈絡的內容。</p>
+</details>
+
+## 寫作小結
+
+一篇文章可以由介紹、多層級章節、多媒體和結尾組成。不必使用所有元件，選擇最適合內容的格式即可。完成後，記得將範例中的文字、圖片與媒體網址換成自己的內容。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/demo_attention.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-31T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-31 </time> <span class="archive-title" data-astro-cid-qma2cssl>Markdown 內容範例：從標題到多媒體</span> <p class="archive-description" data-astro-cid-qma2cssl>這是一篇可直接預覽的文章範本，展示常見標題層級、文字格式、清單、表格、程式碼與多媒體內容。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>使用指南</span> <span class="archive-tag" data-astro-cid-qma2cssl>Markdown</span><span class="archive-tag" data-astro-cid-qma2cssl>寫作指南</span><span class="archive-tag" data-astro-cid-qma2cssl>範例</span> </div> </div> </a><a class="archive-row" href="/astro-blog-reading/" data-post-href="/astro-blog-reading/" data-archive-item data-post-translation-group="translation:astro-blog-reading" data-post-language="en" data-category="Projects" data-tags="Astro|Writing|Blogging" data-search="More than posts: notes, archive and homepage filters Beyond long-form posts, astro-blog gives short thoughts their own notes, old content an archive, and the homepage a filter bar you define yourself. Projects Astro Writing Blogging A blog holds more than one kind of content. Carefully written essays and passing thoughts jotted down in a hurry get in each other's way when they share a single list. astro-blog splits content into two shapes, and gives what accumulates an archive and filters, so the site stays easy to browse as it grows.
+
+## Two shapes of content
+
+### Posts: the complete form
+
+Posts are the formal long content: title, subtitle, cover, category, tags and language versions, nothing missing. They appear in the homepage list and the archive, and form the body of the site.
+
+### Notes: short, dated entries
+
+Notes are lighter: the filename is the date plus a title, and the body can be a few sentences. They suit recording one idea, one link, one quote from the day — with no pressure to &#34;make it a whole article&#34;. A draft switch can hide a note until you are ready to publish it.
+
+## Archive: making old content findable
+
+### A time-ordered archive page
+
+Once posts pile up, paging through the homepage is not enough. The archive page lists everything by time; its title and description are multilingual too, and it is the fastest route for returning readers to find an old piece.
+
+### Categories and tags
+
+Every post has one category and several tags. Categories carry the broad direction, tags the finer-grained topics, and both are used by the archive and the homepage filters.
+
+## Homepage filters: your call
+
+The filter bar above the homepage list is not hard-coded. In the settings you can:
+
+- Toggle the two built-in filters, &#34;this month&#34; and &#34;popular&#34;;
+- Add as many category and tag filters as you like;
+- Give every filter a label and a match value in all five languages.
+
+Popular posts are decided by each post's own `popular` flag — no view-count machinery. A static site has no database, and in that world simple is reliable.
+
+## Reading details
+
+- Dark mode follows the system or switches by hand, using the site's ◐ symbol as the toggle;
+- Post pages support multi-level headings, tables, highlighted code, images and audio/video embeds — the showcase post demonstrates the full set;
+- Mobile layout is tuned on its own: lists hide covers, single posts trade rounded corners for divider lines, and small screens stay clean.
+
+That is the content side. Next, behind the curtain: the admin panel built for these files, astro-blog-admin." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-reading.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-29T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-29 </time> <span class="archive-title" data-astro-cid-qma2cssl>More than posts: notes, archive and homepage filters</span> <p class="archive-description" data-astro-cid-qma2cssl>Beyond long-form posts, astro-blog gives short thoughts their own notes, old content an archive, and the homepage a filter bar you define yourself.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Projects</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>Writing</span><span class="archive-tag" data-astro-cid-qma2cssl>Blogging</span> </div> </div> </a><a class="archive-row" href="/astro-blog-reading/" data-post-href="/astro-blog-reading/" data-archive-item data-post-translation-group="translation:astro-blog-reading" data-post-language="ja" data-category="プロジェクト紹介" data-tags="Astro|執筆|ブログ" data-search="記事だけじゃない：ノート、アーカイブ、トップページの絞り込み 長文記事のほかに、astro-blog には短い思考のためのノート、古いコンテンツのためのアーカイブ、そして自分で定義できるトップページの絞り込みバーがあります。 プロジェクト紹介 Astro 執筆 ブログ ブログのコンテンツは「記事」だけではありません。腰を据えて書いた長文と、ふと思いついて書き留めた短い思考を同じ一覧に混ぜると、互いの邪魔になります。astro-blog はコンテンツを 2 つの形に分け、積み重なったコンテンツにはアーカイブと絞り込みを用意し、サイトが育っても回遊しやすさを保ちます。
+
+## 2 つのコンテンツ形態
+
+### 記事：完全な形の執筆
+
+記事は正式な長文コンテンツです。タイトル、サブタイトル、カバー、カテゴリ、タグ、多言語版——どれも欠けません。トップページの一覧とアーカイブに現れ、サイトの主体となります。
+
+### ノート：日付で記す短いコンテンツ
+
+ノートはもっと軽い存在です。ファイル名が日付＋タイトルで、本文は数文でもかまいません。その日の 1 つのアイデア、1 本のリンク、1 つの引用を記録するのに向いていて、「記事に仕立てなければ」という圧力がありません。下書きスイッチで隠しておき、準備ができたら公開できます。
+
+## アーカイブ：古いコンテンツを見つけ直せるように
+
+### 時間順のアーカイブページ
+
+記事が増えてくると、トップページをめくるだけでは足りません。アーカイブページは全記事を時間順に並べ、タイトルと説明も多言語対応。再訪した読者が昔の記事を見つける最速の道です。
+
+### カテゴリとタグ
+
+各記事にはカテゴリが 1 つとタグが複数。カテゴリが大まかな方向を、タグが細かい粒度の主題を担い、どちらもアーカイブとトップページの絞り込みで使われます。
+
+## トップページの絞り込み：自分で決める
+
+記事一覧の上にある絞り込みバーは固定ではありません。設定で次のことができます：
+
+- 「今月の記事」と「人気の記事」という 2 つの組み込み絞り込みのオン／オフ；
+- カテゴリ絞り込みとタグ絞り込みを好きなだけ追加；
+- 各絞り込みのボタン文言とマッチ値を 5 言語すべてで指定。
+
+人気記事は各記事自身の `popular` フラグで決まります。閲覧数カウントのような複雑な仕掛けはありません——データベースのない静的サイトでは、この単純さこそが信頼性です。
+
+## 読書体験の細部
+
+- ダークモードはシステム連動と手動切替の両対応、切替ボタンはサイトの ◐ マーク；
+- 記事ページは多段見出し、表、コードハイライト、画像、音声・動画の埋め込みに対応（サンプル記事に全セットのデモあり）；
+- モバイルは個別に調整：リストではカバーを隠し、記事単体では角丸をやめて区切り線にし、小さな画面でもすっきり。
+
+コンテンツ側の紹介はここまで。次回は舞台裏へ——このファイル群のために作られた管理画面、astro-blog-admin です。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-reading.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-29T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-29 </time> <span class="archive-title" data-astro-cid-qma2cssl>記事だけじゃない：ノート、アーカイブ、トップページの絞り込み</span> <p class="archive-description" data-astro-cid-qma2cssl>長文記事のほかに、astro-blog には短い思考のためのノート、古いコンテンツのためのアーカイブ、そして自分で定義できるトップページの絞り込みバーがあります。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>プロジェクト紹介</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>執筆</span><span class="archive-tag" data-astro-cid-qma2cssl>ブログ</span> </div> </div> </a><a class="archive-row" href="/astro-blog-reading/" data-post-href="/astro-blog-reading/" data-archive-item data-post-translation-group="translation:astro-blog-reading" data-post-language="ko" data-category="프로젝트 소개" data-tags="Astro|글쓰기|블로그" data-search="글만 있는 게 아니다: 노트, 아카이브, 홈페이지 필터 긴 글 말고도 astro-blog에는 짧은 생각을 위한 노트, 오래된 콘텐츠를 위한 아카이브, 직접 정의할 수 있는 홈페이지 필터 바가 있습니다. 프로젝트 소개 Astro 글쓰기 블로그 블로그의 콘텐츠는 &#34;글&#34; 한 종류만 있는 게 아닙니다. 공들여 쓴 긴 글과 스치듯 떠오른 생각을 적어 둔 짧은 글이 같은 목록에 섞이면 서로 방해가 됩니다. astro-blog는 콘텐츠를 두 가지 형태로 나누고, 쌓여 가는 콘텐츠를 위해 아카이브와 필터를 마련해 사이트가 커져도 둘러보기 좋게 유지합니다.
+
+## 두 가지 콘텐츠 형태
+
+### 글: 완전한 형태의 글쓰기
+
+글은 정식 장문 콘텐츠입니다. 제목, 부제, 커버, 카테고리, 태그, 다국어 버전까지 빠짐없습니다. 홈페이지 목록과 아카이브에 나타나며 사이트의 본체를 이룹니다.
+
+### 노트: 날짜로 적는 짧은 콘텐츠
+
+노트는 더 가벼운 존재입니다. 파일 이름이 날짜+제목이고 본문은 몇 문장이면 됩니다. 그날의 아이디어 하나, 링크 하나, 인용 하나를 기록하기에 알맞아 &#34;글로 완성해야 한다&#34;는 부담이 없습니다. 초안 스위치로 숨겨 두었다가 준비되면 공개할 수 있습니다.
+
+## 아카이브: 오래된 콘텐츠를 다시 찾을 수 있게
+
+### 시간순 아카이브 페이지
+
+글이 많아지면 홈페이지 페이징만으로는 부족합니다. 아카이브 페이지는 모든 글을 시간순으로 나열하고, 제목과 설명 역시 다국어를 지원합니다. 다시 찾아온 독자가 옛 글을 찾는 가장 빠른 길입니다.
+
+### 카테고리와 태그
+
+모든 글에는 카테고리 하나와 태그 여러 개가 있습니다. 카테고리는 큰 방향을, 태그는 세밀한 주제를 담당하며, 둘 다 아카이브와 홈페이지 필터에서 쓰입니다.
+
+## 홈페이지 필터: 직접 정한다
+
+글 목록 위의 필터 바는 고정되어 있지 않습니다. 설정에서 할 수 있는 일:
+
+- &#34;이번 달 글&#34;과 &#34;인기 글&#34; 두 가지 내장 필터의 켜기/끄기;
+- 카테고리 필터와 태그 필터를 원하는 만큼 추가;
+- 각 필터의 버튼 문구와 매칭 값을 다섯 언어로 모두 지정.
+
+인기 글은 각 글 자신의 `popular` 표시로 결정됩니다. 조회 수 통계 같은 복잡한 장치는 없습니다——데이터베이스가 없는 정적 사이트에서는 이 단순함이 오히려 신뢰성입니다.
+
+## 읽기 경험의 디테일
+
+- 다크 모드는 시스템을 따르거나 직접 전환할 수 있고, 토글 버튼은 사이트의 ◐ 상징;
+- 글 페이지는 다단계 제목, 표, 코드 강조, 이미지, 오디오·동영상 삽입을 지원하며 예시 글에 전체 데모가 있습니다;
+- 모바일은 따로 다듬었습니다. 목록에서는 커버를 숨기고, 글 단독 화면에서는 둥근 모서리를 없애고 구분선으로 바꿔 작은 화면에서도 깔끔합니다.
+
+콘텐츠 쪽 소개는 여기까지입니다. 다음 글에서는 무대 뒤로——이 파일들을 위해 만든 관리 화면, astro-blog-admin을 다룹니다." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-reading.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-29T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-29 </time> <span class="archive-title" data-astro-cid-qma2cssl>글만 있는 게 아니다: 노트, 아카이브, 홈페이지 필터</span> <p class="archive-description" data-astro-cid-qma2cssl>긴 글 말고도 astro-blog에는 짧은 생각을 위한 노트, 오래된 콘텐츠를 위한 아카이브, 직접 정의할 수 있는 홈페이지 필터 바가 있습니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>프로젝트 소개</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>글쓰기</span><span class="archive-tag" data-astro-cid-qma2cssl>블로그</span> </div> </div> </a><a class="archive-row" href="/astro-blog-reading/" data-post-href="/astro-blog-reading/" data-archive-item data-post-translation-group="translation:astro-blog-reading" data-post-language="zh-Hans" data-category="项目介绍" data-tags="Astro|写作|博客" data-search="不只是文章：随记、归档与首页筛选 长文章之外，astro-blog 还给短想法留了随记，给旧内容留了归档，给首页留了可以自己定义的筛选栏。 项目介绍 Astro 写作 博客 博客不只有“文章”一种内容。认认真真写的长文，和随手记下的一闪而过的想法，放在同一个列表里互相干扰。astro-blog 把内容分成两种形态，又给积累下来的内容准备了归档和筛选，让站点长大之后依然好逛。
+
+## 两种内容形态
+
+### 文章：完整的写作
+
+文章是正式的长内容：标题、副标题、封面、分类、标签、多语言版本，一样不少。它们出现在首页列表和归档里，是站点的主体。
+
+### 随记：按日期记的短内容
+
+随记是更轻的存在：文件名就是日期加标题，正文可以只有几句话。它适合记录当天的一个想法、一个链接、一句摘抄——写起来没有“要凑成一篇文章”的压力。草稿开关可以先藏起来，想好了再发布。
+
+## 归档：让旧内容找得回来
+
+### 按时间的归档页
+
+文章多了之后，光靠首页翻页是不够的。归档页按时间把全部文章列出来，页面标题和说明同样支持多语言，是老读者找回旧文最快的路。
+
+### 分类与标签
+
+每篇文章有一个分类、若干标签。分类管大方向，标签管细颗粒度的主题，两者在归档和首页筛选里都会用到。
+
+## 首页筛选：自己说了算
+
+首页文章列表上方的筛选栏不是写死的。设置里可以：
+
+- 开关「本月文章」和「热门文章」两个内置筛选；
+- 添加任意多个分类筛选和标签筛选；
+- 每个筛选的按钮文字和匹配值都支持五种语言。
+
+热门文章由文章自己的 `popular` 标记决定，不搞复杂的浏览量统计——静态站点没有数据库，这种简单反而可靠。
+
+## 阅读体验的细节
+
+- 深色模式跟随系统，也可手动切换，切换按钮就是站点的 ◐ 标志；
+- 文章页支持多级标题、表格、代码高亮、图片、音视频嵌入，示例文章里有全套演示；
+- 移动端单独调过排版：列表不显示封面、单篇去掉圆角改分割线，小屏幕上一样清爽。
+
+内容侧就介绍到这里。下一篇换到幕后：给这套文件配的那个管理后台，astro-blog-admin。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-reading.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-29T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-29 </time> <span class="archive-title" data-astro-cid-qma2cssl>不只是文章：随记、归档与首页筛选</span> <p class="archive-description" data-astro-cid-qma2cssl>长文章之外，astro-blog 还给短想法留了随记，给旧内容留了归档，给首页留了可以自己定义的筛选栏。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>项目介绍</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>写作</span><span class="archive-tag" data-astro-cid-qma2cssl>博客</span> </div> </div> </a><a class="archive-row" href="/astro-blog-reading/" data-post-href="/astro-blog-reading/" data-archive-item data-post-translation-group="translation:astro-blog-reading" data-post-language="zh-Hant" data-category="項目介紹" data-tags="Astro|寫作|部落格" data-search="不只是文章：隨記、歸檔與首頁篩選 長文章之外，astro-blog 還給短想法留了隨記，給舊內容留了歸檔，給首頁留了可以自己定義的篩選欄。 項目介紹 Astro 寫作 部落格 部落格不只有「文章」一種內容。認認真真寫的長文，和隨手記下的一閃而過的想法，放在同一個列表裡互相干擾。astro-blog 把內容分成兩種形態，又給累積下來的內容準備了歸檔和篩選，讓站點長大之後依然好逛。
+
+## 兩種內容形態
+
+### 文章：完整的寫作
+
+文章是正式的長內容：標題、副標題、封面、分類、標籤、多語言版本，一樣不少。它們出現在首頁列表和歸檔裡，是站點的主體。
+
+### 隨記：按日期記的短內容
+
+隨記是更輕的存在：檔案名就是日期加標題，正文可以只有幾句話。它適合記錄當天的一個想法、一個連結、一句摘抄——寫起來沒有「要湊成一篇文章」的壓力。草稿開關可以先藏起來，想好了再發布。
+
+## 歸檔：讓舊內容找得回來
+
+### 按時間的歸檔頁
+
+文章多了之後，光靠首頁翻頁是不夠的。歸檔頁按時間把全部文章列出來，頁面標題和說明同樣支援多語言，是老讀者找回舊文最快的路。
+
+### 分類與標籤
+
+每篇文章有一個分類、若干標籤。分類管大方向，標籤管細顆粒度的主題，兩者在歸檔和首頁篩選裡都會用到。
+
+## 首頁篩選：自己說了算
+
+首頁文章列表上方的篩選欄不是寫死的。設定裡可以：
+
+- 開關「本月文章」和「熱門文章」兩個內建篩選；
+- 添加任意多個分類篩選和標籤篩選；
+- 每個篩選的按鈕文字和匹配值都支援五種語言。
+
+熱門文章由文章自己的 `popular` 標記決定，不搞複雜的瀏覽量統計——靜態站點沒有資料庫，這種簡單反而可靠。
+
+## 閱讀體驗的細節
+
+- 深色模式跟隨系統，也可手動切換，切換按鈕就是站點的 ◐ 標誌；
+- 文章頁支援多級標題、表格、程式碼高亮、圖片、音影片嵌入，示例文章裡有全套示範；
+- 行動端單獨調過排版：列表不顯示封面、單篇去掉圓角改分割線，小螢幕上一樣清爽。
+
+內容側就介紹到這裡。下一篇換到幕後：給這套檔案配的那個管理後台，astro-blog-admin。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-reading.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-29T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-29 </time> <span class="archive-title" data-astro-cid-qma2cssl>不只是文章：隨記、歸檔與首頁篩選</span> <p class="archive-description" data-astro-cid-qma2cssl>長文章之外，astro-blog 還給短想法留了隨記，給舊內容留了歸檔，給首頁留了可以自己定義的篩選欄。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>項目介紹</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>寫作</span><span class="archive-tag" data-astro-cid-qma2cssl>部落格</span> </div> </div> </a><a class="archive-row" href="/astro-blog-multilingual/" data-post-href="/astro-blog-multilingual/" data-archive-item data-post-translation-group="translation:astro-blog-multilingual" data-post-language="en" data-category="Projects" data-tags="Astro|Multilingual|Blogging" data-search="Five languages, one site: how astro-blog does multilingual Multilingual here is not a plugin that translates titles — it is an organizing principle that runs from the content folders through the UI copy to the admin panel. Projects Astro Multilingual Blogging astro-blog supports Simplified Chinese, Traditional Chinese, English, Japanese and Korean. This is not an afterthought &#34;translate button in the corner&#34; — it is designed into the content structure from day one: a post can have five language versions, every settings field can be multilingual, and when a reader switches language, the whole site's copy, lists and filters switch with it.
+
+## Language as part of the content structure
+
+### Five versions of every post
+
+Posts live in per-language folders: `src/content/posts/zh-Hans/`, `en/`, `ja/` and so on. The five versions of one post share the same slug and carry the same `translationKey` in their frontmatter, which is how the site knows &#34;these five files are one article&#34;. The article you are reading is organized exactly this way.
+
+### What if a language is missing
+
+Not every post needs all five versions. When a language is missing, the post simply does not appear in that language's list — the site never pads a list with a version the reader cannot read. One post fewer is better than one post in the wrong language.
+
+## Multilingual interface copy
+
+### Settings are language maps
+
+It is not just the site title. Navigation labels, page titles, button text — interface elements are stored in the settings files as language maps: one field, five pieces of copy. Rendering picks the current language, falling back to Simplified Chinese and then English, so a page never shows a blank where copy should be.
+
+### Filters understand language too
+
+The homepage category and tag filters carry multilingual labels and match values: Chinese readers see Chinese category names filtering Chinese posts, English readers see English ones, with identical logic underneath.
+
+## The reader's experience
+
+Language switching is a capsule control; one tap changes the page copy, the post cards and the date formats. Post cards are rendered in all languages at build time, so switching is a purely client-side pick — no new request, effective the instant you tap.
+
+The real cost of multilingual is in writing and maintenance: one five-language article is five files. Next, a look at the content shapes — beyond long posts, this blog also has short notes, an archive, and a customizable homepage filter bar." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-multilingual.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-28T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-28 </time> <span class="archive-title" data-astro-cid-qma2cssl>Five languages, one site: how astro-blog does multilingual</span> <p class="archive-description" data-astro-cid-qma2cssl>Multilingual here is not a plugin that translates titles — it is an organizing principle that runs from the content folders through the UI copy to the admin panel.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Projects</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>Multilingual</span><span class="archive-tag" data-astro-cid-qma2cssl>Blogging</span> </div> </div> </a><a class="archive-row" href="/astro-blog-multilingual/" data-post-href="/astro-blog-multilingual/" data-archive-item data-post-translation-group="translation:astro-blog-multilingual" data-post-language="ja" data-category="プロジェクト紹介" data-tags="Astro|多言語|ブログ" data-search="5つの言語、1つのサイト：astro-blog の多言語設計 多言語とは、タイトルを翻訳するプラグインを付けることではありません。コンテンツのフォルダ構成から UI の文言、管理画面まで貫く組織の原則です。 プロジェクト紹介 Astro 多言語 ブログ astro-blog は簡体字中国語、繁体字中国語、英語、日本語、韓国語の 5 言語に対応しています。これは「ページの隅に翻訳ボタンを置く」ような後付けではなく、初日からコンテンツ構造に組み込まれた設計です。1 本の記事が 5 つの言語版を持ち、設定ファイルの各フィールドが多言語であり得て、読者が言語を切り替えれば、サイト全体の文言・一覧・絞り込みが一緒に切り替わります。
+
+## 言語はコンテンツ構造の一部
+
+### 記事ごとに 5 バージョン
+
+記事は言語別フォルダに収められます：`src/content/posts/zh-Hans/`、`en/`、`ja/` など。同じ記事の 5 バージョンは同じ slug を使い、frontmatter に同じ `translationKey` を書くことで、サイトは「この 5 ファイルは 1 本の記事だ」と認識します。今読んでいるこの記事も、まさにその方式で組織されています。
+
+### ある言語が欠けていたら
+
+すべての記事に 5 言語が揃っている必要はありません。言語が欠けていれば、その言語の一覧にその記事は登場しません。読めない言語の記事で水増しするくらいなら、1 本少ない方がましだという考え方です。
+
+## UI 文言の多言語
+
+### 設定は言語マップ
+
+対象はサイトタイトルだけではありません。ナビゲーションのラベル、ページタイトル、ボタンの文言——UI の要素は設定ファイルの中で「言語マップ」として保存されます：1 フィールドに 5 言語分の文言。レンダリング時は現在の言語を選び、なければ簡体字中国語、次に英語へフォールバックするので、文言が空白になることはありません。
+
+### 絞り込みも言語を理解する
+
+トップページのカテゴリ・タグ絞り込みは、表示名もマッチする値も多言語です。中国語の読者には中国語のカテゴリ名で中国語の記事を絞り込み、英語の読者には英語で、仕組みは同一です。
+
+## 読者の体験
+
+言語切替はカプセル型のコントロールで、タップ 1 回でページの文言、記事カード、日付の書式まで切り替わります。記事カードはビルド時に全言語分がレンダリング済みのため、切替は純粋にクライアント側の選択——再リクエストなしに、その場で反映されます。
+
+多言語の本当のコストは執筆と保守にあります。5 言語の記事 1 本は 5 ファイルです。次回はコンテンツの形について——長文記事のほかに、このブログには短いノート、アーカイブ、カスタマイズ可能なトップページの絞り込みがあります。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-multilingual.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-28T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-28 </time> <span class="archive-title" data-astro-cid-qma2cssl>5つの言語、1つのサイト：astro-blog の多言語設計</span> <p class="archive-description" data-astro-cid-qma2cssl>多言語とは、タイトルを翻訳するプラグインを付けることではありません。コンテンツのフォルダ構成から UI の文言、管理画面まで貫く組織の原則です。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>プロジェクト紹介</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>多言語</span><span class="archive-tag" data-astro-cid-qma2cssl>ブログ</span> </div> </div> </a><a class="archive-row" href="/astro-blog-multilingual/" data-post-href="/astro-blog-multilingual/" data-archive-item data-post-translation-group="translation:astro-blog-multilingual" data-post-language="ko" data-category="프로젝트 소개" data-tags="Astro|다국어|블로그" data-search="다섯 가지 언어, 하나의 사이트: astro-blog의 다국어 설계 다국어란 제목을 번역해 주는 플러그인을 다는 일이 아닙니다. 콘텐츠 폴더 구조부터 인터페이스 문구, 관리 화면까지 관통하는 조직 원칙입니다. 프로젝트 소개 Astro 다국어 블로그 astro-blog는 중국어 간체, 중국어 번체, 영어, 일본어, 한국어 다섯 언어를 지원합니다. 페이지 구석에 번역 버튼을 붙인 식의 뒤늦은 대처가 아니라, 첫날부터 콘텐츠 구조에 심어 둔 설계입니다. 글 하나가 다섯 가지 언어 버전을 가질 수 있고, 설정 파일의 모든 필드가 다국어일 수 있으며, 독자가 언어를 바꾸면 사이트 전체의 문구와 목록과 필터가 함께 바뀝니다.
+
+## 언어는 콘텐츠 구조의 일부
+
+### 글마다 다섯 가지 버전
+
+글은 언어별 폴더에 보관됩니다. `src/content/posts/zh-Hans/`, `en/`, `ja/` 같은 식입니다. 한 글의 다섯 버전은 같은 slug를 쓰고 frontmatter에 같은 `translationKey`를 적어, 사이트가 &#34;이 다섯 파일이 하나의 글&#34;이라고 알 수 있게 합니다. 지금 읽고 있는 이 글이 바로 그렇게 조직되어 있습니다.
+
+### 어떤 언어가 빠져 있으면
+
+모든 글이 다섯 언어를 다 갖출 필요는 없습니다. 언어가 빠져 있으면 그 언어의 목록에 그 글은 나타나지 않습니다. 읽을 수 없는 언어의 글로 목록을 채우느니, 한 편 적은 편이 낫습니다.
+
+## 인터페이스 문구의 다국어
+
+### 설정은 언어 맵
+
+사이트 제목만이 아닙니다. 내비게이션 라벨, 페이지 제목, 버튼 문구 같은 인터페이스 요소는 설정 파일 안에 &#34;언어 맵&#34; 형태로 저장됩니다. 필드 하나에 다섯 언어의 문구. 렌더링할 때는 현재 언어를 고르고, 없으면 중국어 간체, 그다음 영어로 대체하므로 문구가 빈칸으로 남는 일은 없습니다.
+
+### 필터도 언어를 이해한다
+
+홈페이지의 카테고리와 태그 필터는 표시 이름도 매칭 값도 다국어입니다. 중국어 독자에게는 중국어 카테고리 이름으로 중국어 글을, 영어 독자에게는 영어로, 아래의 논리는 완전히 같습니다.
+
+## 독자의 경험
+
+언어 전환은 캡슐 버튼 하나로 이뤄지며, 한 번 누르면 페이지 문구와 글 카드와 날짜 형식이 함께 바뀝니다. 글 카드는 빌드 시점에 모든 언어 버전이 렌더링되어 있어 전환은 순수하게 클라이언트 쪽 선택일 뿐, 새 요청 없이 누르는 즉시 반영됩니다.
+
+다국어의 진짜 비용은 쓰는 일과 유지하는 일에 있습니다. 다섯 언어짜리 글 하나는 파일 다섯 개입니다. 다음 글에서는 콘텐츠의 형태를 다룹니다. 긴 글 말고도 이 블로그에는 짧은 노트와 아카이브, 맞춤 설정이 가능한 홈페이지 필터가 있습니다." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-multilingual.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-28T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-28 </time> <span class="archive-title" data-astro-cid-qma2cssl>다섯 가지 언어, 하나의 사이트: astro-blog의 다국어 설계</span> <p class="archive-description" data-astro-cid-qma2cssl>다국어란 제목을 번역해 주는 플러그인을 다는 일이 아닙니다. 콘텐츠 폴더 구조부터 인터페이스 문구, 관리 화면까지 관통하는 조직 원칙입니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>프로젝트 소개</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>다국어</span><span class="archive-tag" data-astro-cid-qma2cssl>블로그</span> </div> </div> </a><a class="archive-row" href="/astro-blog-multilingual/" data-post-href="/astro-blog-multilingual/" data-archive-item data-post-translation-group="translation:astro-blog-multilingual" data-post-language="zh-Hans" data-category="项目介绍" data-tags="Astro|多语言|博客" data-search="五种语言，一个站点：astro-blog 的多语言设计 多语言不是装个插件翻译标题，而是从内容目录、界面文案到编辑后台的一整套组织方式。 项目介绍 Astro 多语言 博客 astro-blog 支持简体中文、繁体中文、英语、日语、韩语五种语言。这不是“页面右上角有个翻译按钮”式的事后补丁，而是从第一天就长在内容结构里的设计：一篇文章可以有五个语言版本，站点设置里的每个字段都可以是多语言的，读者切换语言时，整站的文案、列表和筛选都跟着换。
+
+## 语言是内容结构的一部分
+
+### 每篇文章五个版本
+
+文章按语言分目录存放：`src/content/posts/zh-Hans/`、`en/`、`ja/` 等等。同一篇文章的五个版本使用相同的 slug，并在 frontmatter 里写同一个 `translationKey`，站点据此知道“这五篇其实是一篇”。你正在读的这篇文章，就是这样组织的。
+
+### 缺了某个语言怎么办
+
+不是每篇文章都必须五种齐全。某个语言缺失时，该语言的文章列表里就不会出现它，不会拿别的语言硬凑——宁可少一篇，也不给读者一篇看不懂语言的文章。
+
+## 界面文案的多语言
+
+### 设置即语言映射
+
+站点标题不是全部。导航文字、页面标题、按钮文案……这些界面元素在设置文件里以“语言映射”的形式保存：一个字段对应五种语言五份文案。渲染时按当前语言取值，取不到时按简体中文、英文的顺序降级，页面永远不会露出空白。
+
+### 筛选也懂语言
+
+首页的分类与标签筛选，按钮显示名和匹配值都是多语言的：中文读者看到中文的分类名，筛的是中文文章的分类；英文读者看到英文的，逻辑完全一致。
+
+## 读者的体验
+
+切换语言是一个胶囊按钮，点一下整页文案、文章卡片、日期格式都跟着变。文章卡片在构建时就把五个语言的版本都渲染好，切换是纯前端的挑选，没有重新请求，点下去立刻生效。
+
+多语言带来的真正成本在写作和维护：一篇五语文章是五个文件。下一篇聊聊内容形态——除了长文章，这个博客还有随记、归档和一套可自定义的首页筛选。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-multilingual.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-28T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-28 </time> <span class="archive-title" data-astro-cid-qma2cssl>五种语言，一个站点：astro-blog 的多语言设计</span> <p class="archive-description" data-astro-cid-qma2cssl>多语言不是装个插件翻译标题，而是从内容目录、界面文案到编辑后台的一整套组织方式。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>项目介绍</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>多语言</span><span class="archive-tag" data-astro-cid-qma2cssl>博客</span> </div> </div> </a><a class="archive-row" href="/astro-blog-multilingual/" data-post-href="/astro-blog-multilingual/" data-archive-item data-post-translation-group="translation:astro-blog-multilingual" data-post-language="zh-Hant" data-category="項目介紹" data-tags="Astro|多語言|部落格" data-search="五種語言，一個站點：astro-blog 的多語言設計 多語言不是裝個外掛翻譯標題，而是從內容目錄、介面文案到編輯後台的一整套組織方式。 項目介紹 Astro 多語言 部落格 astro-blog 支援簡體中文、繁體中文、英語、日語、韓語五種語言。這不是「頁面右上角有個翻譯按鈕」式的事後補丁，而是從第一天就長在內容結構裡的設計：一篇文章可以有五個語言版本，站點設定裡的每個欄位都可以是多語言的，讀者切換語言時，整站的文案、列表和篩選都跟著換。
+
+## 語言是內容結構的一部分
+
+### 每篇文章五個版本
+
+文章按語言分目錄存放：`src/content/posts/zh-Hans/`、`en/`、`ja/` 等等。同一篇文章的五個版本使用相同的 slug，並在 frontmatter 裡寫同一個 `translationKey`，站點據此知道「這五篇其實是一篇」。你正在讀的這篇文章，就是這樣組織的。
+
+### 缺了某個語言怎麼辦
+
+不是每篇文章都必須五種齊全。某個語言缺失時，該語言的文章列表裡就不會出現它，不會拿別的語言硬湊——寧可少一篇，也不給讀者一篇看不懂語言的文章。
+
+## 介面文案的多語言
+
+### 設定即語言映射
+
+站點標題不是全部。導航文字、頁面標題、按鈕文案……這些介面元素在設定檔案裡以「語言映射」的形式保存：一個欄位對應五種語言五份文案。渲染時按目前語言取值，取不到時按簡體中文、英文的順序降級，頁面永遠不會露出空白。
+
+### 篩選也懂語言
+
+首頁的分類與標籤篩選，按鈕顯示名和匹配值都是多語言的：中文讀者看到中文的分類名，篩的是中文文章的分類；英文讀者看到英文的，邏輯完全一致。
+
+## 讀者的體驗
+
+切換語言是一個膠囊按鈕，點一下整頁文案、文章卡片、日期格式都跟著變。文章卡片在建構時就把五個語言的版本都渲染好，切換是純前端的挑選，沒有重新請求，點下去立刻生效。
+
+多語言帶來的真正成本在寫作和維護：一篇五語文章是五個檔案。下一篇聊聊內容形態——除了長文章，這個部落格還有隨記、歸檔和一套可自訂的首頁篩選。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-multilingual.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-28T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-28 </time> <span class="archive-title" data-astro-cid-qma2cssl>五種語言，一個站點：astro-blog 的多語言設計</span> <p class="archive-description" data-astro-cid-qma2cssl>多語言不是裝個外掛翻譯標題，而是從內容目錄、介面文案到編輯後台的一整套組織方式。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>項目介紹</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>多語言</span><span class="archive-tag" data-astro-cid-qma2cssl>部落格</span> </div> </div> </a><a class="archive-row" href="/astro-blog-intro/" data-post-href="/astro-blog-intro/" data-archive-item data-post-translation-group="translation:astro-blog-intro" data-post-language="en" data-category="Projects" data-tags="Astro|Open Source|Blogging" data-search="astro-blog: a personal blog that gives content back to files No database, no dynamic backend — every post, note and site setting is a file in a repository. A purely static personal blog built with Astro. Projects Astro Open Source Blogging Many personal blogs eventually lose to maintenance: databases to back up, software to upgrade, and one day the server expires and years of writing vanish with it. astro-blog starts from a plain idea — **content is files**. Posts are Markdown, notes are Markdown, site settings are JSONC, and everything lives in a single Git repository. If the repository exists, the blog exists; moving house means cloning it and building once more.
+
+It is built with [Astro](https://astro.build), and the build output is purely static files that can live on any static host: GitHub Pages, Cloudflare Pages, EdgeOne Pages, or the most ordinary web space.
+
+## What it is made of
+
+### Content as files
+
+`src/content/posts/` holds posts in per-language folders, `src/content/notes/` holds short notes, and a few JSONC files in `src/data/` keep the site-wide settings: site info, navigation, the about page, service lists. There is no database and no runtime query — at build time everything is compiled into static pages.
+
+### Pure static generation
+
+On every build, Astro renders Markdown to HTML and generates a separate page set for each language. Speed depends only on the host's CDN, and security stays naturally simple: there is no dynamic interface to attack, because a page is just a file.
+
+### Five languages
+
+The site ships with Simplified Chinese, Traditional Chinese, English, Japanese and Korean. Every post can exist in five versions, and the interface copy is organized per language too, so switching languages gives readers a consistent whole-site experience rather than a translated title.
+
+## Design language
+
+### Floating capsule navigation
+
+At the top floats a capsule-shaped navigation bar with a frosted-glass feel; the current page is marked by a small bubble that slides as you move between sections. The dark-mode toggle carries the site's signature symbol, ◐, and can follow the system or be switched by hand.
+
+### Typography and whitespace
+
+Body text is typeset for reading first: comfortable line height, restrained heading levels, syntax-highlighted code blocks. Mobile spacing is tuned separately — a single post on a phone drops the rounded container in favor of divider lines, keeping the same character as the desktop view.
+
+## Who it is for
+
+- Writers who want a **long-term, self-controlled** site instead of being locked into a platform;
+- Engineers comfortable with Git who accept that publishing means committing a file;
+- Authors writing for readers in more than one language.
+
+If you would rather have a ready-made online editing experience, its sibling project astro-blog-admin fills exactly that gap. The next article looks at how this blog organizes its five languages." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-27T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-27 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog: a personal blog that gives content back to files</span> <p class="archive-description" data-astro-cid-qma2cssl>No database, no dynamic backend — every post, note and site setting is a file in a repository. A purely static personal blog built with Astro.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>Projects</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>Open Source</span><span class="archive-tag" data-astro-cid-qma2cssl>Blogging</span> </div> </div> </a><a class="archive-row" href="/astro-blog-intro/" data-post-href="/astro-blog-intro/" data-archive-item data-post-translation-group="translation:astro-blog-intro" data-post-language="ja" data-category="プロジェクト紹介" data-tags="Astro|オープンソース|ブログ" data-search="astro-blog：コンテンツをファイルに返す個人ブログ データベースも動的バックエンドもなし。記事もノートもサイト設定も、すべてリポジトリ内のファイル——Astro で構築した純粋な静的個人ブログです。 プロジェクト紹介 Astro オープンソース ブログ 多くの個人ブログは最終的に「保守」に負けます。データベースのバックアップ、ソフトウェアの更新、そしてある日サーバーの期限が切れ、数年分の文章が一緒に消えてしまう。astro-blog の出発点は素朴です——**コンテンツはファイルである**。記事は Markdown、ノートは Markdown、サイト設定は JSONC、すべてが 1 つの Git リポジトリの中にあります。リポジトリがある限りブログは存在し、引っ越しはクローンして再ビルドするだけです。
+
+[Astro](https://astro.build) で構築され、ビルド成果物は純粋な静的ファイル。GitHub Pages、Cloudflare Pages、EdgeOne Pages、あるいはごく普通のレンタルスペースなど、どんな静的ホスティングにも置けます。
+
+## 何でできているか
+
+### コンテンツ即ファイル
+
+`src/content/posts/` に言語別フォルダで記事を、`src/content/notes/` にノートを、`src/data/` の JSONC ファイルにサイト全体の設定（サイト情報、ナビゲーション、About ページ、サービス一覧）を保持します。データベースもランタイムのクエリもなく、ビルド時にすべて静的ページへコンパイルされます。
+
+### 純粋な静的生成
+
+ビルドのたびに Astro が Markdown を HTML にレンダリングし、言語ごとにページを生成します。速度はホスティングの CDN 次第、セキュリティは自然とシンプルです——攻撃される動的インターフェースが存在せず、ページはファイルそのものだからです。
+
+### 5 つの言語
+
+サイトには簡体字中国語、繁体字中国語、英語、日本語、韓国語の 5 言語が組み込まれています。各記事は 5 バージョン持つことができ、UI の文言もすべて言語別に整理されているため、言語を切り替えるとタイトルだけが訳されたページではなく、サイト全体で一貫した言語体験が得られます。
+
+## デザイン言語
+
+### 浮遊するカプセル型ナビゲーション
+
+ページ上部にはすりガラス質感のカプセル型ナビゲーションが浮かび、現在のページは滑って移動する小さなバブルで示されます。ダークモード切替ボタンにはサイトの象徴である ◐ の記号が使われ、システム連動と手動切替の両方に対応します。
+
+### タイポグラフィと余白
+
+本文は読むことを最優先に組版されています。快適な行間、抑制の効いた見出し階層、シンタックスハイライト付きのコードブロック。モバイルの余白は個別に調整され、スマホでは記事コンテナの角丸をやめて区切り線にすることで、デスクトップと同じ空気感を保ちます。
+
+## こんな人に向いています
+
+- プラットフォームに縛られず、**長期的に自分でコントロールできる**個人サイトがほしい書き手；
+- Git でファイルを管理することに慣れ、「公開 = ファイルをコミットすること」を受け入れられるエンジニア；
+- 複数言語の読者を支えたい書き手。
+
+すぐ使えるオンライン編集体験がほしい場合は、姉妹プロジェクトの astro-blog-admin がその隙間を埋めます。次の記事では、このブログの多言語がどう組織されているかを見ていきます。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-27T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-27 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog：コンテンツをファイルに返す個人ブログ</span> <p class="archive-description" data-astro-cid-qma2cssl>データベースも動的バックエンドもなし。記事もノートもサイト設定も、すべてリポジトリ内のファイル——Astro で構築した純粋な静的個人ブログです。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>プロジェクト紹介</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>オープンソース</span><span class="archive-tag" data-astro-cid-qma2cssl>ブログ</span> </div> </div> </a><a class="archive-row" href="/astro-blog-intro/" data-post-href="/astro-blog-intro/" data-archive-item data-post-translation-group="translation:astro-blog-intro" data-post-language="ko" data-category="프로젝트 소개" data-tags="Astro|오픈소스|블로그" data-search="astro-blog: 콘텐츠를 파일로 돌려주는 개인 블로그 데이터베이스도, 동적 백엔드도 없습니다. 글과 노트와 사이트 설정이 모두 저장소 안의 파일인, Astro로 만든 순수 정적 개인 블로그입니다. 프로젝트 소개 Astro 오픈소스 블로그 많은 개인 블로그는 결국 유지보수에 집니다. 데이터베이스는 백업해야 하고, 프로그램은 업그레이드해야 하며, 어느 날 서버가 만료되면 몇 년치 글이 함께 사라집니다. astro-blog의 출발점은 소박합니다——**콘텐츠는 곧 파일**입니다. 글은 Markdown, 노트는 Markdown, 사이트 설정은 JSONC, 전부가 하나의 Git 저장소 안에 있습니다. 저장소가 있으면 블로그가 있고, 이사는 클론해서 다시 빌드하면 끝입니다.
+
+[Astro](https://astro.build)로 만들었고 빌드 결과물은 순수 정적 파일이라 GitHub Pages, Cloudflare Pages, EdgeOne Pages는 물론 가장 평범한 웹 호스팅에도 올릴 수 있습니다.
+
+## 무엇으로 이루어졌나
+
+### 콘텐츠 즉 파일
+
+`src/content/posts/`는 언어별 폴더에 글을, `src/content/notes/`는 노트를, `src/data/`의 JSONC 파일 몇 개는 사이트 전체 설정(사이트 정보, 내비게이션, 소개 페이지, 서비스 목록)을 담습니다. 데이터베이스도 런타임 조회도 없이, 빌드 시점에 모든 것이 정적 페이지로 컴파일됩니다.
+
+### 순수 정적 생성
+
+빌드할 때마다 Astro가 Markdown을 HTML로 렌더링하고 언어별로 페이지를 생성합니다. 속도는 호스팅의 CDN에만 달려 있고, 보안은 자연히 단순합니다——공격할 동적 인터페이스가 없고, 페이지가 곧 파일 자체이기 때문입니다.
+
+### 다섯 가지 언어
+
+사이트에는 중국어 간체, 중국어 번체, 영어, 일본어, 한국어 다섯 언어가 내장되어 있습니다. 모든 글은 다섯 가지 버전을 가질 수 있고, 인터페이스 문구도 전부 언어별로 정리되어 있어 언어를 바꾸면 제목만 번역된 페이지가 아니라 사이트 전체가 일관된 언어 환경을 제공합니다.
+
+## 디자인 언어
+
+### 떠 있는 캡슐 내비게이션
+
+페이지 위에는 프로스트 글래스 질감의 캡슐형 내비게이션이 떠 있고, 현재 페이지는 미끄러지듯 이동하는 작은 버블로 표시됩니다. 다크 모드 토글 버튼에는 사이트의 상징인 ◐ 기호가 쓰이며, 시스템을 따르거나 직접 전환할 수 있습니다.
+
+### 타이포그래피와 여백
+
+본문은 읽기를 최우선으로 조판했습니다. 편안한 행간, 절제된 제목 단계, 문법 강조가 적용된 코드 블록. 모바일 간격은 따로 다듬어, 휴대폰에서는 글 컨테이너의 둥근 모서리를 없애고 구분선으로 바꿔 데스크톱과 같은 분위기를 유지합니다.
+
+## 이런 분께 맞습니다
+
+- 플랫폼에 묶이지 않고 **장기적으로 직접 통제할 수 있는** 개인 사이트를 원하는 저자;
+- Git으로 파일을 관리하는 데 익숙하고 &#34;발행 = 파일 커밋&#34;을 받아들일 수 있는 엔지니어;
+- 여러 언어의 독자를 지원해야 하는 저자.
+
+바로 쓸 수 있는 온라인 편집 경험을 원한다면 자매 프로젝트인 astro-blog-admin이 그 빈틈을 채웁니다. 다음 글에서는 이 블로그의 다국어가 어떻게 조직되는지 살펴봅니다." data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-27T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-27 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog: 콘텐츠를 파일로 돌려주는 개인 블로그</span> <p class="archive-description" data-astro-cid-qma2cssl>데이터베이스도, 동적 백엔드도 없습니다. 글과 노트와 사이트 설정이 모두 저장소 안의 파일인, Astro로 만든 순수 정적 개인 블로그입니다.</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>프로젝트 소개</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>오픈소스</span><span class="archive-tag" data-astro-cid-qma2cssl>블로그</span> </div> </div> </a><a class="archive-row" href="/astro-blog-intro/" data-post-href="/astro-blog-intro/" data-archive-item data-post-translation-group="translation:astro-blog-intro" data-post-language="zh-Hans" data-category="项目介绍" data-tags="Astro|开源项目|博客" data-search="astro-blog：一个把内容还给文件的个人博客 没有数据库，没有动态后端，所有文章、随记和站点设置都是仓库里的文件——这是一个用 Astro 构建的纯静态个人博客。 项目介绍 Astro 开源项目 博客 很多个人博客最后都败给了维护：数据库要备份，程序要升级，某天服务器到期，几年的文字一起消失。astro-blog 的出发点很朴素——**内容就是文件**。文章是 Markdown，随记是 Markdown，站点设置是 JSONC，全部躺在一个 Git 仓库里。仓库在，博客就在；想搬家，克隆下来重新构建一次即可。
+
+它用 [Astro](https://astro.build) 构建，构建产物是纯静态文件，可以放在任何静态托管上：GitHub Pages、Cloudflare Pages、EdgeOne Pages，或者一台最普通的虚拟主机。
+
+## 它由什么组成
+
+### 内容即文件
+
+`src/content/posts/` 按语言分目录存放文章，`src/content/notes/` 存放随记，`src/data/` 里的几个 JSONC 文件保存全站设置：站点信息、导航、关于页面、服务列表等。没有数据库，也没有运行时查询，构建时一切都被编译进静态页面。
+
+### 纯静态生成
+
+每次构建，Astro 把 Markdown 渲染成 HTML，把多语言内容分别生成各自的页面。访问速度只取决于托管平台的 CDN，安全性则天然简单——没有可被攻击的动态接口，页面就是文件本身。
+
+### 五种语言
+
+站点内置简体中文、繁体中文、英语、日语、韩语五种语言。每篇文章可以有五个版本，界面文案也全部按语言组织，读者切换语言时看到的不只是翻译过的标题，而是整站一致的语言环境。
+
+## 设计语言
+
+### 浮动胶囊导航
+
+页面顶部是一条浮动的胶囊形导航，毛玻璃质感，当前页面用一个会滑动的小气泡标记。深色模式切换按钮是站点的标志符号 ◐，跟随系统也可以手动切换。
+
+### 排版与留白
+
+正文排版以阅读为先：合适的行高、克制的标题层级、代码块语法高亮。移动端单独打磨过间距，单篇文章在手机上去掉容器圆角、改用分割线，和桌面端保持同一种气质。
+
+## 适合谁
+
+- 想要一个**长期可控**的个人站点，不想被某个平台绑定的作者；
+- 习惯用 Git 管理文件，愿意接受“发文章 = 提交文件”的工程师；
+- 需要多语言读者支持的跨语言写作者。
+
+如果你更看重开箱即用的在线编辑体验，它的姊妹项目 astro-blog-admin 补上了这一块——下一篇我们聊聊这个博客的多语言是怎么组织的。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-27T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-27 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog：一个把内容还给文件的个人博客</span> <p class="archive-description" data-astro-cid-qma2cssl>没有数据库，没有动态后端，所有文章、随记和站点设置都是仓库里的文件——这是一个用 Astro 构建的纯静态个人博客。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>项目介绍</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>开源项目</span><span class="archive-tag" data-astro-cid-qma2cssl>博客</span> </div> </div> </a><a class="archive-row" href="/astro-blog-intro/" data-post-href="/astro-blog-intro/" data-archive-item data-post-translation-group="translation:astro-blog-intro" data-post-language="zh-Hant" data-category="項目介紹" data-tags="Astro|開源項目|部落格" data-search="astro-blog：一個把內容還給檔案的個人部落格 沒有資料庫，沒有動態後端，所有文章、隨記和站點設定都是倉庫裡的檔案——這是一個用 Astro 建構的純靜態個人部落格。 項目介紹 Astro 開源項目 部落格 很多個人部落格最後都敗給了維護：資料庫要備份，程式要升級，某天伺服器到期，幾年的文字一起消失。astro-blog 的出發點很樸素——**內容就是檔案**。文章是 Markdown，隨記是 Markdown，站點設定是 JSONC，全部躺在一個 Git 倉庫裡。倉庫在，部落格就在；想搬家，克隆下來重新建構一次即可。
+
+它用 [Astro](https://astro.build) 建構，建構產物是純靜態檔案，可以放在任何靜態託管上：GitHub Pages、Cloudflare Pages、EdgeOne Pages，或者一台最普通的虛擬主機。
+
+## 它由什麼組成
+
+### 內容即檔案
+
+`src/content/posts/` 按語言分目錄存放文章，`src/content/notes/` 存放隨記，`src/data/` 裡的幾個 JSONC 檔案保存全站設定：站點資訊、導航、關於頁面、服務列表等。沒有資料庫，也沒有執行時查詢，建構時一切都被編譯進靜態頁面。
+
+### 純靜態生成
+
+每次建構，Astro 把 Markdown 渲染成 HTML，把多語言內容分別生成各自的頁面。存取速度只取決於託管平台的 CDN，安全性則天然簡單——沒有可被攻擊的動態介面，頁面就是檔案本身。
+
+### 五種語言
+
+站點內建簡體中文、繁體中文、英語、日語、韓語五種語言。每篇文章可以有五個版本，介面文案也全部按語言組織，讀者切換語言時看到的不只是翻譯過的標題，而是整站一致的語言環境。
+
+## 設計語言
+
+### 浮動膠囊導航
+
+頁面頂部是一條浮動的膠囊形導航，毛玻璃質感，目前頁面用一個會滑動的小氣泡標記。深色模式切換按鈕是站點的標誌符號 ◐，跟隨系統也可以手動切換。
+
+### 排版與留白
+
+正文排版以閱讀為先：合適的行高、克制的標題層級、程式碼區塊語法高亮。行動端單獨打磨過間距，單篇文章在手機上去掉容器圓角、改用分割線，和桌面端保持同一種氣質。
+
+## 適合誰
+
+- 想要一個**長期可控**的個人站點，不想被某個平台綁定的作者；
+- 習慣用 Git 管理檔案，願意接受「發文章 = 提交檔案」的工程師；
+- 需要多語言讀者支援的跨語言寫作者。
+
+如果你更看重開箱即用的線上編輯體驗，它的姊妹項目 astro-blog-admin 補上了這一塊——下一篇我們聊聊這個部落格的多語言是怎麼組織的。" data-astro-cid-qma2cssl> <div class="archive-cover" aria-hidden="true" data-astro-cid-qma2cssl> <img src="https://astro-blog-admin.pages.dev/images/cover-blog-intro.webp" alt="" loading="lazy" decoding="async" data-astro-cid-qma2cssl> </div> <div class="archive-row-content" data-astro-cid-qma2cssl> <time class="archive-date" datetime="2026-10-27T00:00:00.000Z" data-astro-cid-qma2cssl> 2026-10-27 </time> <span class="archive-title" data-astro-cid-qma2cssl>astro-blog：一個把內容還給檔案的個人部落格</span> <p class="archive-description" data-astro-cid-qma2cssl>沒有資料庫，沒有動態後端，所有文章、隨記和站點設定都是倉庫裡的檔案——這是一個用 Astro 建構的純靜態個人部落格。</p> <div class="archive-row-meta" data-astro-cid-qma2cssl> <span class="archive-category" data-astro-cid-qma2cssl>項目介紹</span> <span class="archive-tag" data-astro-cid-qma2cssl>Astro</span><span class="archive-tag" data-astro-cid-qma2cssl>開源項目</span><span class="archive-tag" data-astro-cid-qma2cssl>部落格</span> </div> </div> </a> <p class="archive-empty" data-archive-empty data-i18n="archiveNoResults" hidden data-astro-cid-qma2cssl>
+没有找到符合条件的文章。
+</p> </section> </div> <script data-astro-rerun>
+    (() => {
+      window.archivePageController?.abort();
+      const controller = new AbortController();
+      window.archivePageController = controller;
+      const options = { signal: controller.signal };
+      const search = document.querySelector("[data-archive-search]");
+      const items = [...document.querySelectorAll("[data-archive-item]")];
+      const categoryGroup = document.querySelector('[data-filter-group="category"]');
+      const tagGroup = document.querySelector('[data-filter-group="tag"]');
+      const resultCount = document.querySelector("[data-result-count]");
+      const emptyState = document.querySelector("[data-archive-empty]");
+      const resetButton = document.querySelector("[data-archive-reset]");
+      let category = "all";
+      const selectedTags = new Set();
+      let selectedLanguage = localStorage.getItem("language-preference") || "zh-Hans";
+      let selectedLanguageItems = new Set();
+      const postGroups = new Map();
+      items.forEach((item) => {
+        const key = item.dataset.postTranslationGroup;
+        if (!postGroups.has(key)) postGroups.set(key, []);
+        postGroups.get(key).push(item);
+      });
+
+      const updateLanguageItems = () => {
+        selectedLanguageItems = new Set();
+        postGroups.forEach((group) => {
+          const selected =
+            group.find((item) => item.dataset.postLanguage === selectedLanguage) ??
+            group.find((item) => item.dataset.postLanguage === "zh-Hans") ??
+            group.find((item) => item.dataset.postLanguage === "zh") ??
+            group[0];
+          if (selected) selectedLanguageItems.add(selected);
+        });
+        const categories = new Set([...selectedLanguageItems].map((item) => item.dataset.category));
+        categoryGroup.querySelectorAll("[data-category-option]").forEach((button) => {
+          button.hidden = !categories.has(button.dataset.filterValue);
+        });
+        if (category !== "all" && !categories.has(category)) {
+          category = "all";
+          setCategoryFilter(category);
+        }
+      };
+
+      const filterItems = () => {
+        const query = search.value.trim().toLocaleLowerCase();
+        let visibleCount = 0;
+        items.forEach((item) => {
+          const matchesCategory = category === "all" || item.dataset.category === category;
+          const itemTags = item.dataset.tags.split("|");
+          const matchesTag = selectedTags.size === 0 || [...selectedTags].some((tag) => itemTags.includes(tag));
+          const matchesQuery = !query || item.dataset.search.toLocaleLowerCase().includes(query);
+          const visible = selectedLanguageItems.has(item) && matchesCategory && matchesTag && matchesQuery;
+          item.hidden = !visible;
+          if (visible) visibleCount += 1;
+        });
+        resultCount.textContent = String(visibleCount);
+        emptyState.hidden = visibleCount > 0;
+        resetButton.hidden = category === "all" && selectedTags.size === 0 && !query;
+      };
+
+      const setCategoryFilter = (value) => {
+        categoryGroup.querySelectorAll(".archive-filter-chip").forEach((button) => {
+          const active = button.dataset.filterValue === value;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+      };
+
+      const updateTagOptions = () => {
+        const availableTags = new Set(
+          [...selectedLanguageItems]
+            .filter((item) => category === "all" || item.dataset.category === category)
+            .flatMap((item) => item.dataset.tags.split("|").filter(Boolean)),
+        );
+        tagGroup.querySelectorAll("[data-tag-option]").forEach((button) => {
+          const available = availableTags.has(button.dataset.filterValue);
+          button.hidden = !available;
+          if (!available) selectedTags.delete(button.dataset.filterValue);
+        });
+        const allTagsButton = tagGroup.querySelector('[data-filter-value="all"]');
+        const activeTags = selectedTags.size === 0 ? ["all"] : [...selectedTags];
+        tagGroup.querySelectorAll(".archive-filter-chip").forEach((button) => {
+          const active = activeTags.includes(button.dataset.filterValue);
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+        allTagsButton.setAttribute("aria-pressed", String(selectedTags.size === 0));
+      };
+
+      categoryGroup.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-filter-value]");
+        if (!button || !categoryGroup.contains(button)) return;
+        category = button.dataset.filterValue;
+        setCategoryFilter(category);
+        updateTagOptions();
+        filterItems();
+      }, options);
+
+      tagGroup.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-filter-value]");
+        if (!button || !tagGroup.contains(button)) return;
+        const value = button.dataset.filterValue;
+        if (value === "all") {
+          selectedTags.clear();
+        } else if (selectedTags.has(value)) {
+          selectedTags.delete(value);
+        } else {
+          selectedTags.add(value);
+        }
+        updateTagOptions();
+        filterItems();
+      }, options);
+
+      search.addEventListener("input", filterItems, options);
+      resetButton.addEventListener("click", () => {
+        category = "all";
+        selectedTags.clear();
+        search.value = "";
+        setCategoryFilter(category);
+        updateTagOptions();
+        filterItems();
+      }, options);
+
+      document.addEventListener("keydown", (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          search.focus();
+        }
+      }, options);
+
+      document.addEventListener("site-language-change", (event) => {
+        selectedLanguage = event.detail?.language || "zh-Hans";
+        selectedTags.clear();
+        updateLanguageItems();
+        updateTagOptions();
+        filterItems();
+      }, options);
+
+      setCategoryFilter(category);
+      updateLanguageItems();
+      updateTagOptions();
+      filterItems();
+    })();
+  </script>  </main> <footer> <div class="container">
+© 2026 Hooleeas </div> </footer> <script type="application/json" id="site-translations">{"zh-Hans":{"all":"全部","thisMonth":"本月发布","popular":"热门文章","list":"列表","grid":"网格","learnMore":"了解详细","languagePicker":"选择语言","themeToggle":"切换主题","openMobileMenu":"打开导航菜单","closeMobileMenu":"关闭导航菜单","showArticleContents":"显示文章目录","hideArticleContents":"隐藏文章目录","navigationHome":"主页","articleContents":"文章目录","articleTags":"文章标签","shareMenuLabel":"分享页面","shareMenuHeading":"分享此页面","shareQrCode":"扫码访问此页面","shareToX":"分享到 X","copyShareLink":"复制链接","shareArticleCopied":"链接已复制","shareArticleError":"无法自动复制链接，请手动复制下方地址。","articleShareTitle":"喜欢这篇文章？分享给更多人","articleShareDescription":"扫码打开文章，或将链接分享给朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果这篇文章对你有所帮助，欢迎支持我的创作。","donationBinance":"币安","donationWechat":"微信","donationAlipay":"支付宝","pagination":"文章分页","previousPage":"上一页","nextPage":"下一页","archive":"文章归档","notes":"随记","services":"公益服务","about":"关于","creativity":"Apple 订阅","creativityAriaLabel":"站长提供实惠Apple订阅共享服务","siteDays":"建站天数","sitePosts":"文章总数","siteWords":"全站字数","noPosts":"暂时还没有文章。","noPostsDescription":"新的内容正在准备中，欢迎稍后再来。","profileStats":"站点统计","featureSubtitle":"探索技术 创造可能","profile":"一名独立开发者，专注于技术探索与开源分享","archiveTitle":"文章归档","archiveIntroduction":"按分类、标签浏览文章，或直接搜索关键词。","archiveSearchLabel":"搜索文章","archiveSearchPlaceholder":"搜索标题、摘要或正文","archiveCategories":"分类","archiveTags":"标签","archiveFilters":"文章筛选","archiveList":"文章列表","archiveCover":"封面图片","archiveAll":"全部","archiveResults":"篇文章","archiveReset":"清除筛选","archiveNoResults":"没有找到符合条件的文章。"},"zh-Hant":{"all":"全部","thisMonth":"本月發布","popular":"熱門文章","list":"列表","grid":"網格","learnMore":"了解詳情","languagePicker":"選擇語言","themeToggle":"切換主題","openMobileMenu":"開啟導覽選單","closeMobileMenu":"關閉導覽選單","showArticleContents":"顯示文章目錄","hideArticleContents":"隱藏文章目錄","navigationHome":"首頁","articleContents":"文章目錄","articleTags":"文章標籤","shareMenuLabel":"分享頁面","shareMenuHeading":"分享此頁面","shareQrCode":"掃描 QR Code 分享此頁面","shareToX":"分享到 X","copyShareLink":"複製連結","shareArticleCopied":"連結已複製","shareArticleError":"無法自動複製連結，請手動複製下方網址。","articleShareTitle":"喜歡這篇文章嗎？分享給更多人","articleShareDescription":"掃描 QR Code 開啟文章，或將連結分享給朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果這篇文章對你有所幫助，歡迎支持我的創作。","donationBinance":"幣安","donationWechat":"微信","donationAlipay":"支付寶","pagination":"文章分頁","previousPage":"上一頁","nextPage":"下一頁","archive":"文章歸檔","notes":"隨記","services":"公益服務","about":"關於","creativity":"Apple 訂閱","creativityAriaLabel":"站長提供實惠的 Apple 訂閱共享服務","siteDays":"建站天數","sitePosts":"文章總數","siteWords":"全站字數","noPosts":"暫時還沒有文章。","noPostsDescription":"新內容正在準備中，歡迎稍後再來。","profileStats":"網站統計","featureSubtitle":"探索技術，創造可能","profile":"一名獨立開發者，專注於技術探索與開源分享","archiveTitle":"文章歸檔","archiveIntroduction":"依分類、標籤瀏覽文章，或直接搜尋關鍵字。","archiveSearchLabel":"搜尋文章","archiveSearchPlaceholder":"搜尋標題、摘要或內文","archiveCategories":"分類","archiveTags":"標籤","archiveFilters":"文章篩選","archiveList":"文章列表","archiveCover":"封面圖片","archiveAll":"全部","archiveResults":"篇文章","archiveReset":"清除篩選","archiveNoResults":"找不到符合條件的文章。"},"en":{"all":"All","thisMonth":"This month","popular":"Popular","list":"List","grid":"Grid","learnMore":"Learn more","languagePicker":"Select language","themeToggle":"Toggle theme","openMobileMenu":"Open navigation menu","closeMobileMenu":"Close navigation menu","showArticleContents":"Show article contents","hideArticleContents":"Hide article contents","navigationHome":"Home","articleContents":"Contents","articleTags":"Article tags","shareMenuLabel":"Share this page","shareMenuHeading":"Share this page","shareQrCode":"Scan to open this page","shareToX":"Share on X","copyShareLink":"Copy link","shareArticleCopied":"Link copied","shareArticleError":"Could not copy the link automatically. Please copy the URL below.","articleShareTitle":"Enjoyed this article? Share it with others","articleShareDescription":"Scan the QR code to open the article, or share the link with a friend.","articleDonationTitle":"Support the author","articleDonationDescription":"If you found this article helpful, consider supporting my work.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"Article pagination","previousPage":"Previous","nextPage":"Next","archive":"Archive","notes":"Notes","services":"Charity","about":"About","creativity":"Apple Subscriptions","creativityAriaLabel":"Affordable Apple subscription sharing services offered by the site owner","siteDays":"Days online","sitePosts":"Articles","siteWords":"Words","noPosts":"No articles yet.","noPostsDescription":"New content is on the way. Please check back soon.","profileStats":"Site statistics","featureSubtitle":"Explore technology and creative possibilities","profile":"An independent developer focused on exploring technology and sharing open source","archiveTitle":"Archive","archiveIntroduction":"Browse by category or tag, or search for a keyword.","archiveSearchLabel":"Search articles","archiveSearchPlaceholder":"Search titles, summaries, or content","archiveCategories":"Categories","archiveTags":"Tags","archiveFilters":"Article filters","archiveList":"Article list","archiveCover":"Cover image","archiveAll":"All","archiveResults":"articles","archiveReset":"Clear filters","archiveNoResults":"No articles match your filters."},"ja":{"all":"すべて","thisMonth":"今月の記事","popular":"人気の記事","list":"リスト","grid":"グリッド","learnMore":"詳しく見る","languagePicker":"言語を選択","themeToggle":"テーマを切り替え","openMobileMenu":"ナビゲーションメニューを開く","closeMobileMenu":"ナビゲーションメニューを閉じる","showArticleContents":"目次を表示","hideArticleContents":"目次を隠す","navigationHome":"ホーム","articleContents":"目次","articleTags":"記事のタグ","shareMenuLabel":"ページを共有","shareMenuHeading":"このページを共有","shareQrCode":"QRコードを読み取ってページを共有","shareToX":"X で共有","copyShareLink":"リンクをコピー","shareArticleCopied":"リンクをコピーしました","shareArticleError":"リンクを自動でコピーできません。下のURLを手動でコピーしてください。","articleShareTitle":"この記事が気に入ったら、ぜひ共有してください","articleShareDescription":"QRコードで記事を開くか、リンクを友達に共有できます。","articleDonationTitle":"作者を応援する","articleDonationDescription":"この記事がお役に立てたら、創作へのご支援をお願いします。","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"記事のページ送り","previousPage":"前へ","nextPage":"次へ","archive":"アーカイブ","notes":"日々のメモ","services":"サービス","about":"このサイトについて","creativity":"Apple サブスクリプション","creativityAriaLabel":"サイト管理者が提供するお得な Apple サブスクリプション共有サービス","siteDays":"運営日数","sitePosts":"記事数","siteWords":"総単語数","noPosts":"記事はまだありません。","noPostsDescription":"新しい記事を準備中です。また後ほどご覧ください。","profileStats":"サイト統計","featureSubtitle":"テクノロジーを探求し、新たな可能性を創造する","profile":"技術の探求とオープンソースの共有に取り組む個人開発者","archiveTitle":"記事アーカイブ","archiveIntroduction":"カテゴリーやタグから記事を探したり、キーワードで検索したりできます。","archiveSearchLabel":"記事を検索","archiveSearchPlaceholder":"タイトル、概要、本文を検索","archiveCategories":"カテゴリー","archiveTags":"タグ","archiveFilters":"記事の絞り込み","archiveList":"記事一覧","archiveCover":"カバー画像","archiveAll":"すべて","archiveResults":"件の記事","archiveReset":"絞り込みを解除","archiveNoResults":"条件に一致する記事が見つかりません。"},"ko":{"all":"전체","thisMonth":"이번 달","popular":"인기 글","list":"목록","grid":"그리드","learnMore":"자세히 보기","languagePicker":"언어 선택","themeToggle":"테마 전환","openMobileMenu":"탐색 메뉴 열기","closeMobileMenu":"탐색 메뉴 닫기","showArticleContents":"목차 표시","hideArticleContents":"목차 숨기기","navigationHome":"홈","articleContents":"목차","articleTags":"글 태그","shareMenuLabel":"페이지 공유","shareMenuHeading":"이 페이지 공유","shareQrCode":"QR 코드를 스캔해 페이지 공유","shareToX":"X에 공유","copyShareLink":"링크 복사","shareArticleCopied":"링크가 복사되었습니다","shareArticleError":"링크를 자동으로 복사할 수 없습니다. 아래 URL을 직접 복사해 주세요.","articleShareTitle":"이 글이 마음에 드셨나요? 더 많은 사람과 공유해 보세요","articleShareDescription":"QR 코드를 스캔해 글을 열거나 링크를 친구와 공유하세요.","articleDonationTitle":"작성자 후원하기","articleDonationDescription":"이 글이 도움이 되었다면 창작 활동을 응원해 주세요.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"글 페이지 이동","previousPage":"이전","nextPage":"다음","archive":"아카이브","notes":"짧은 메모","services":"서비스","about":"소개","creativity":"Apple 구독","creativityAriaLabel":"사이트 운영자가 제공하는 합리적인 Apple 구독 공유 서비스","siteDays":"운영 일수","sitePosts":"전체 글 수","siteWords":"전체 단어 수","noPosts":"아직 글이 없습니다.","noPostsDescription":"새 글을 준비하고 있습니다. 나중에 다시 방문해 주세요.","profileStats":"사이트 통계","featureSubtitle":"기술을 탐구하고 가능성을 만들다","profile":"기술 탐구와 오픈 소스 공유에 집중하는 독립 개발자","archiveTitle":"글 모아보기","archiveIntroduction":"카테고리와 태그로 글을 둘러보거나 키워드로 검색하세요.","archiveSearchLabel":"글 검색","archiveSearchPlaceholder":"제목, 요약 또는 본문 검색","archiveCategories":"카테고리","archiveTags":"태그","archiveFilters":"글 필터","archiveList":"글 목록","archiveCover":"표지 이미지","archiveAll":"전체","archiveResults":"개의 글","archiveReset":"필터 지우기","archiveNoResults":"조건에 맞는 글을 찾을 수 없습니다."}}</script> <script data-astro-rerun>
+      (() => {
+      window.sitePageController?.abort();
+      const controller = new AbortController();
+      window.sitePageController = controller;
+      const listenerOptions = { signal: controller.signal };
+      const root = document.documentElement;
+      const withBase = (path) => {
+        if (!path.startsWith("/") || path.startsWith("//")) return path;
+        const base = root.dataset.baseUrl || "/";
+        const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+        if (path === normalizedBase.slice(0, -1) || path.startsWith(normalizedBase)) return path;
+        return `${normalizedBase}${path.slice(1)}`;
+      };
+      if (
+        root.dataset.pageType === "article" &&
+        window.matchMedia("(max-width: 980px)").matches
+      ) {
+        root.classList.add("toc-hidden");
+      } else {
+        root.classList.remove("toc-hidden");
+      }
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.pointerType !== "mouse" ||
+          !(event.target instanceof Element) ||
+          !event.target.closest(".site-header .brand, .site-header .site-nav .nav-links a")
+        ) return;
+        sessionStorage.setItem("navigation-hover-suppressed", "true");
+        root.dataset.navigationHoverSuppressed = "true";
+      }, { ...listenerOptions, capture: true });
+      window.addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "mouse") return;
+        sessionStorage.removeItem("navigation-hover-suppressed");
+        delete root.dataset.navigationHoverSuppressed;
+      }, listenerOptions);
+      const updateNavigationGradient = () => {
+        const header = document.querySelector(".site-header");
+        const capsule = header?.querySelector(".header-inner");
+        if (!header || !capsule || header.dataset.pageType === "article") {
+          capsule?.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const currentPageLink = header.querySelector(
+          '.brand[aria-current="page"], .site-nav .nav-links a[aria-current="page"]',
+        );
+        if (!currentPageLink) {
+          capsule.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const capsuleRect = capsule.getBoundingClientRect();
+        const linkRect = currentPageLink.getBoundingClientRect();
+        capsule.style.setProperty(
+          "--navigation-gradient-shift",
+          `${linkRect.left + linkRect.width / 2 - capsuleRect.left - capsuleRect.width / 2}px`,
+        );
+      };
+      const preserveGradientTransition =
+        root.dataset.navigationGradientReady === "true";
+      const gradientStartRatio = window.navigationGradientStartRatio;
+      delete window.navigationGradientStartRatio;
+      const gradientCapsule = document.querySelector(".site-header .header-inner");
+      if (
+        gradientCapsule &&
+        document.querySelector(".site-header")?.dataset.pageType !== "article"
+      ) {
+        if (Number.isFinite(gradientStartRatio)) {
+          gradientCapsule.style.setProperty("--navigation-gradient-transition", "0s");
+          gradientCapsule.style.setProperty(
+            "--navigation-gradient-shift",
+            `${gradientCapsule.getBoundingClientRect().width * (gradientStartRatio - 0.5)}px`,
+          );
+          getComputedStyle(gradientCapsule, "::before").transform;
+          gradientCapsule.style.removeProperty("--navigation-gradient-transition");
+        }
+        updateNavigationGradient();
+        getComputedStyle(gradientCapsule, "::before").transform;
+        if (preserveGradientTransition) {
+          root.dataset.navigationGradientReady = "true";
+        } else {
+          void document.fonts.ready.then(() => {
+            requestAnimationFrame(() => {
+              if (root !== document.documentElement || !gradientCapsule.isConnected) return;
+              updateNavigationGradient();
+              getComputedStyle(gradientCapsule, "::before").transform;
+              root.dataset.navigationGradientReady = "true";
+            });
+          });
+        }
+      } else {
+        updateNavigationGradient();
+      }
+      window.addEventListener("resize", updateNavigationGradient, listenerOptions);
+      document
+        .querySelector("[data-theme-toggle]")
+        ?.addEventListener("click", () => {
+          window.clearTimeout(window.themeTransitionTimer);
+          root.classList.add("theme-changing");
+          getComputedStyle(root).getPropertyValue("--bg");
+          root.classList.toggle("dark");
+          localStorage.setItem(
+            "theme",
+            root.classList.contains("dark") ? "dark" : "light",
+          );
+          window.themeTransitionTimer = window.setTimeout(() => {
+            root.classList.remove("theme-changing");
+          }, 560);
+        }, listenerOptions);
+
+      const translations = JSON.parse(document.querySelector("#site-translations").textContent);
+      const tocToggle = document.querySelector("[data-toc-toggle]");
+      const articleTocs = [...document.querySelectorAll(".article-toc")];
+      const tocAnimations = new WeakMap();
+      const cancelTocAnimation = (toc) => {
+        const animations = tocAnimations.get(toc);
+        animations?.panel?.cancel();
+        animations?.contents?.cancel();
+        tocAnimations.delete(toc);
+        toc.style.removeProperty("height");
+        toc.style.removeProperty("max-height");
+        const contents = toc.querySelector(".toc");
+        contents?.style.removeProperty("max-height");
+        contents?.style.removeProperty("opacity");
+        contents?.style.removeProperty("overflow");
+        contents?.style.removeProperty("padding-top");
+      };
+      const setArticleTocHidden = (hidden, animate = false) => {
+        const visibleArticleTocs = articleTocs.filter((toc) =>
+          !toc.closest(".localized-article")?.hidden,
+        );
+        const currentHeights = new Map(visibleArticleTocs.map((toc) => [
+          toc,
+          toc.getBoundingClientRect().height,
+        ]));
+        currentHeights.forEach((_, toc) => {
+          cancelTocAnimation(toc);
+        });
+        root.classList.toggle("toc-hidden", hidden);
+        tocToggle?.setAttribute("aria-pressed", String(hidden));
+        articleTocs.forEach((toc) => {
+          toc.setAttribute("aria-hidden", String(hidden));
+          toc.inert = hidden;
+        });
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        tocToggle?.setAttribute(
+          "aria-label",
+          hidden ? dictionary.showArticleContents : dictionary.hideArticleContents,
+        );
+        if (animate) {
+          currentHeights.forEach((currentHeight, toc) => {
+            toc.style.maxHeight = "none";
+            const contents = toc.querySelector(".toc");
+            if (hidden) {
+              toc.style.height = `${currentHeight}px`;
+              toc.getBoundingClientRect();
+              const animation = toc.animate(
+                [{ height: `${currentHeight}px` }, { height: "0px" }],
+                { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              tocAnimations.set(toc, { panel: animation });
+              animation.onfinish = () => {
+                if (tocAnimations.get(toc)?.panel !== animation) return;
+                cancelTocAnimation(toc);
+              };
+              return;
+            }
+
+            if (!(contents instanceof HTMLElement)) return;
+            const maxHeight = Math.max(0, window.innerHeight - 120);
+            toc.style.removeProperty("height");
+            contents.style.removeProperty("max-height");
+            contents.style.removeProperty("opacity");
+            contents.style.removeProperty("overflow");
+            contents.style.removeProperty("padding-top");
+            toc.getBoundingClientRect();
+            const naturalPanelHeight = toc.getBoundingClientRect().height;
+            const expandedHeight = Math.min(
+              Number(toc.dataset.expandedHeight) || naturalPanelHeight,
+              maxHeight,
+            );
+            contents.style.maxHeight = "0px";
+            contents.style.opacity = "0";
+            contents.style.overflow = "hidden";
+            contents.style.paddingTop = "0px";
+            toc.getBoundingClientRect();
+            const headingHeight = toc.getBoundingClientRect().height;
+            const collapsedContentsHeight = contents.getBoundingClientRect().height;
+            const expandedContentsHeight = Math.max(
+              0,
+              expandedHeight - headingHeight + collapsedContentsHeight,
+            );
+            toc.style.height = "0px";
+            toc.getBoundingClientRect();
+
+            const opening = { panel: null, contents: null };
+            tocAnimations.set(toc, opening);
+            const runOpenAnimation = async () => {
+              const headerAnimation = toc.animate(
+                [{ height: "0px" }, { height: `${headingHeight}px` }],
+                { duration: 220, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              opening.panel = headerAnimation;
+              try {
+                await headerAnimation.finished;
+              } catch {
+                return;
+              }
+              if (tocAnimations.get(toc) !== opening) return;
+
+              const panelAnimation = toc.animate(
+                [{ height: `${headingHeight}px` }, { height: `${expandedHeight}px` }],
+                { duration: 420, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              const contentsAnimation = contents.animate(
+                [
+                  { maxHeight: "0px", opacity: 0, paddingTop: "0px" },
+                  {
+                    maxHeight: `${expandedContentsHeight}px`,
+                    opacity: 1,
+                    paddingTop: "16px",
+                  },
+                ],
+                { duration: 420, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              opening.panel = panelAnimation;
+              opening.contents = contentsAnimation;
+              try {
+                await Promise.all([panelAnimation.finished, contentsAnimation.finished]);
+              } catch {
+                return;
+              }
+              if (tocAnimations.get(toc) === opening) cancelTocAnimation(toc);
+            };
+            void runOpenAnimation();
+          });
+        } else {
+          visibleArticleTocs.forEach((toc) => {
+            cancelTocAnimation(toc);
+            if (!hidden) {
+              toc.dataset.expandedHeight = String(toc.getBoundingClientRect().height);
+            }
+          });
+        }
+      };
+      if (tocToggle) setArticleTocHidden(root.classList.contains("toc-hidden"));
+      tocToggle?.addEventListener("click", () => {
+        const hidden = tocToggle.getAttribute("aria-pressed") !== "true";
+        setArticleTocHidden(hidden, true);
+      }, listenerOptions);
+      const languageSelect = document.querySelector("[data-language-select]");
+      const shareControl = document.querySelector("[data-share-control]");
+      const shareToggle = shareControl?.querySelector("[data-share-toggle]");
+      const shareMenu = shareControl?.querySelector(".share-menu");
+      const shareXs = [...document.querySelectorAll("[data-share-x]")];
+      const shareCopies = [...document.querySelectorAll("[data-share-copy]")];
+      const siteHeader = shareControl?.closest(".site-header");
+      if (shareMenu && siteHeader) siteHeader.append(shareMenu);
+      const getShareUrl = (language = root.dataset.language) => {
+        const canonicalLink = document.querySelector('link[rel="canonical"]');
+        const canonicalPath = canonicalLink instanceof HTMLLinkElement
+          ? new URL(canonicalLink.href).pathname
+          : window.location.pathname;
+        const normalizedPath = canonicalPath.replace(/\/+$/, "");
+        const sharePath = normalizedPath
+          ? `${normalizedPath}/${language.toLowerCase()}`
+          : `/${language.toLowerCase()}`;
+        return new URL(sharePath, window.location.origin);
+      };
+      const updateShareUrl = (language) => {
+        const shareUrl = getShareUrl(language).href;
+        const xUrl = new URL("https://twitter.com/intent/tweet");
+        xUrl.searchParams.set("text", shareUrl);
+        shareXs.forEach((shareX) => {
+          shareX.href = xUrl.href;
+          shareX.dataset.appHref = `twitter://post?message=${encodeURIComponent(shareUrl)}`;
+        });
+        window.dispatchEvent(new CustomEvent("share-url-update", {
+          detail: { url: shareUrl },
+        }));
+      };
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      shareXs.forEach((shareX) => {
+        shareX.addEventListener("click", (event) => {
+          if (
+            !isMobileDevice ||
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          event.preventDefault();
+          const appUrl = shareX.dataset.appHref;
+          if (!appUrl) return;
+          window.location.href = appUrl;
+        }, listenerOptions);
+      });
+      const setShareMenuOpen = (open) => {
+        if (!(shareToggle instanceof HTMLButtonElement) || !(shareMenu instanceof HTMLElement)) return;
+        shareToggle.setAttribute("aria-expanded", String(open));
+        shareMenu.hidden = !open;
+        document.body.classList.toggle("share-menu-open", open);
+        if (open) {
+          window.dispatchEvent(new CustomEvent("share-url-update", {
+            detail: { url: getShareUrl().href },
+          }));
+        }
+      };
+      shareToggle?.addEventListener("click", () => {
+        setShareMenuOpen(shareToggle.getAttribute("aria-expanded") !== "true");
+      }, listenerOptions);
+      shareCopies.forEach((shareCopy) => {
+        shareCopy.addEventListener("click", async () => {
+          const language = root.dataset.language;
+          const dictionary = translations[language] ?? translations["zh-Hans"];
+          const shareUrl = getShareUrl(language);
+          try {
+            await navigator.clipboard.writeText(shareUrl.href);
+            shareCopy.textContent = dictionary.shareArticleCopied;
+            window.setTimeout(() => {
+              if (shareCopy.isConnected) {
+                const currentDictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+                shareCopy.textContent = currentDictionary.copyShareLink;
+              }
+            }, 1800);
+          } catch {
+            window.prompt(dictionary.shareArticleError, shareUrl.href);
+          }
+        }, listenerOptions);
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          !(event.target instanceof Element) ||
+          (!event.target.closest("[data-share-control]") && !shareMenu?.contains(event.target))
+        ) {
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+      const applyLanguage = (language) => {
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const requestedLanguage = language === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : language;
+        const effectiveLanguage = availableLanguages.includes(requestedLanguage)
+          ? requestedLanguage
+          : defaultLanguage;
+        const dictionary = translations[effectiveLanguage] ?? translations["zh-Hans"];
+        root.dataset.language = effectiveLanguage;
+        document.documentElement.lang = effectiveLanguage;
+        const localizedArticles = [...document.querySelectorAll(".localized-article")];
+        if (localizedArticles.length > 0) {
+          const selectedArticle =
+            localizedArticles.find(
+              (article) => article.lang.toLowerCase() === effectiveLanguage.toLowerCase(),
+            ) ??
+            localizedArticles.find((article) => article.lang === "zh-Hans") ??
+            localizedArticles.find((article) => article.lang === "zh") ??
+            localizedArticles[0];
+          localizedArticles.forEach((article) => {
+            article.hidden = article !== selectedArticle;
+          });
+        }
+        const localizedMetadata = root.dataset.localizedMetadata
+          ? JSON.parse(root.dataset.localizedMetadata)
+          : null;
+        const metadata = localizedMetadata?.[effectiveLanguage];
+        if (metadata) {
+          document.title = metadata.title;
+          document
+            .querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]')
+            .forEach((element) => {
+              element.content = metadata.description;
+            });
+          document
+            .querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]')
+            .forEach((element) => {
+              element.content = metadata.title;
+            });
+          if (metadata.image) {
+            document
+              .querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]')
+              .forEach((element) => {
+                element.content = new URL(metadata.image, window.location.origin).href;
+              });
+          }
+          if (metadata.imageAlt) {
+            document
+              .querySelectorAll('meta[property="og:image:alt"], meta[name="twitter:image:alt"]')
+              .forEach((element) => {
+                element.content = metadata.imageAlt;
+              });
+          }
+        }
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const value = dictionary[element.dataset.i18n];
+          if (value) element.textContent = value;
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAria];
+          if (value) element.setAttribute("aria-label", value);
+        });
+        if (tocToggle instanceof HTMLButtonElement) {
+          setArticleTocHidden(tocToggle.getAttribute("aria-pressed") === "true");
+        }
+        document.querySelectorAll("[data-i18n-alt]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAlt];
+          if (value) element.setAttribute("alt", value);
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nPlaceholder];
+          if (value) element.setAttribute("placeholder", value);
+        });
+        const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+        if (mobileMenuToggle) {
+          const label = mobileMenuToggle.getAttribute("aria-expanded") === "true"
+            ? dictionary.closeMobileMenu
+            : dictionary.openMobileMenu;
+          mobileMenuToggle.setAttribute("aria-label", label);
+        }
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete("lang");
+        const legacyLanguageHash = new URLSearchParams(currentUrl.hash.slice(1)).get("lang");
+        if (legacyLanguageHash) currentUrl.hash = "";
+        const canonical = document.querySelector('link[rel="canonical"]');
+        if (
+          root.dataset.pageType === "article" &&
+          root.dataset.shareLanguage &&
+          canonical instanceof HTMLLinkElement
+        ) {
+          currentUrl.pathname = new URL(canonical.href).pathname;
+        }
+        if (`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` !==
+          `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+          window.history.replaceState(window.history.state, "", currentUrl);
+        }
+        const openGraphUrl = document.querySelector('meta[property="og:url"]');
+        if (openGraphUrl instanceof HTMLMetaElement) {
+          openGraphUrl.content = new URL(currentUrl.pathname, window.location.origin).href;
+        }
+        const openGraphLocale = document.querySelector('meta[property="og:locale"]');
+        const socialLocales = {
+          "zh-Hans": "zh_CN",
+          "zh-Hant": "zh_TW",
+          en: "en_US",
+          ja: "ja_JP",
+          ko: "ko_KR",
+        };
+        if (openGraphLocale instanceof HTMLMetaElement) {
+          openGraphLocale.content = socialLocales[effectiveLanguage] ?? socialLocales["zh-Hans"];
+        }
+        const homeLink = document.querySelector("[data-home-link]");
+        if (homeLink instanceof HTMLAnchorElement) {
+          homeLink.href = withBase("/");
+        }
+        document.querySelectorAll("[data-post-href]").forEach((element) => {
+          if (!(element instanceof HTMLAnchorElement)) return;
+          const basePath = new URL(element.dataset.postHref, window.location.origin).pathname;
+          element.href = basePath;
+        });
+        updateShareUrl(effectiveLanguage);
+        languageSelect.value = effectiveLanguage;
+        root.dataset.languageReady = "true";
+        root.removeAttribute("data-language-pending");
+        document.dispatchEvent(new CustomEvent("site-language-change", {
+          detail: { language: effectiveLanguage },
+        }));
+      };
+      const currentUrl = new URL(window.location.href);
+      const requestedLanguage =
+        new URLSearchParams(currentUrl.hash.slice(1)).get("lang") ||
+        currentUrl.searchParams.get("lang") ||
+        root.dataset.shareLanguage;
+      const savedLanguage = localStorage.getItem("language-preference");
+      applyLanguage(requestedLanguage || savedLanguage || root.dataset.language);
+      languageSelect?.addEventListener("change", () => {
+        const language = languageSelect.value;
+        localStorage.setItem("language-preference", language);
+        applyLanguage(language);
+      }, listenerOptions);
+
+      const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+      const mobileNavBackdrop = document.querySelector("[data-mobile-nav-backdrop]");
+      const setMobileMenuOpen = (open) => {
+        document.body.classList.toggle("mobile-nav-open", open);
+        mobileMenuToggle?.setAttribute("aria-expanded", String(open));
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        mobileMenuToggle?.setAttribute(
+          "aria-label",
+          open ? dictionary.closeMobileMenu : dictionary.openMobileMenu,
+        );
+      };
+      mobileMenuToggle?.addEventListener("click", () => {
+        const open = !document.body.classList.contains("mobile-nav-open");
+        if (open) setShareMenuOpen(false);
+        setMobileMenuOpen(open);
+      }, listenerOptions);
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.target instanceof Element &&
+          !event.target.closest(".site-nav, [data-mobile-menu-toggle]")
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, listenerOptions);
+      window.addEventListener("scroll", (event) => {
+        if (
+          document.body.classList.contains("mobile-nav-open") &&
+          !(event.target instanceof Element && event.target.closest(".site-nav"))
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, { ...listenerOptions, capture: true, passive: true });
+      const closeMobileMenuOnScroll = () => {
+        if (document.body.classList.contains("mobile-nav-open")) {
+          setMobileMenuOpen(false);
+        }
+      };
+      window.addEventListener("wheel", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        capture: true,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("touchmove", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("click", () => {
+        setMobileMenuOpen(false);
+        setShareMenuOpen(false);
+      }, listenerOptions);
+      document.querySelectorAll(".site-nav a").forEach((link) => {
+        link.addEventListener("click", () => setMobileMenuOpen(false), listenerOptions);
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setMobileMenuOpen(false);
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+
+      document.querySelectorAll("pre").forEach((block) => {
+        const button = document.createElement("button");
+        button.className = "copy-code";
+        button.type = "button";
+        button.textContent = "复制";
+        button.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(
+            block.querySelector("code")?.innerText || block.innerText,
+          );
+          button.textContent = "已复制";
+          setTimeout(() => (button.textContent = "复制"), 1400);
+        }, listenerOptions);
+        block.appendChild(button);
+      });
+
+      document.querySelectorAll(".video-embed iframe").forEach((frame) => {
+        const width = Number(frame.getAttribute("width"));
+        const height = Number(frame.getAttribute("height"));
+        if (width > 0 && height > 0) {
+          frame.parentElement.style.setProperty(
+            "--video-ratio",
+            `${width} / ${height}`,
+          );
+          frame.parentElement.classList.toggle("portrait", width < height);
+          frame.parentElement.classList.toggle("square", width === height);
+        }
+
+        try {
+          const videoUrl = new URL(frame.src, window.location.href);
+          if (/(^|\.)youtube(?:-nocookie)?\.com$/.test(videoUrl.hostname)) {
+            videoUrl.searchParams.set("rel", "0");
+            videoUrl.searchParams.set("modestbranding", "1");
+            videoUrl.searchParams.set("playsinline", "1");
+            videoUrl.searchParams.set("iv_load_policy", "3");
+            frame.src = videoUrl.toString();
+          }
+        } catch {
+          // Leave embeds from other providers untouched.
+        }
+      });
+      })();
+    </script> <script type="module" src="/_astro/BaseLayout.astro_astro_type_script_index_0_lang.D6bboDWB.js"></script> </body> </html> 

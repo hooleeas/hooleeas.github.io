@@ -1,0 +1,853 @@
+<!DOCTYPE html><html lang="en" data-language="en" data-default-language="zh-Hans" data-base-url="/" data-page-type="article" data-share-language="en" data-available-languages="[&#34;zh-Hans&#34;,&#34;en&#34;,&#34;ja&#34;,&#34;ko&#34;,&#34;zh-Hant&#34;]" data-localized-metadata="{&#34;en&#34;:{&#34;title&#34;:&#34;One codebase, two homes: dual storage and dual-platform deployment · Hooleeas Blog&#34;,&#34;description&#34;:&#34;The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform's own storage, yet presents an identical interface and link rules.&#34;,&#34;image&#34;:&#34;/og/posts/en/astro-blog-admin-deploy.png?v=13&#34;,&#34;imageAlt&#34;:&#34;One codebase, two homes: dual storage and dual-platform deployment&#34;},&#34;ja&#34;:{&#34;title&#34;:&#34;1つのコードベース、2つの家：画像ホスティングの二重ストレージと二重プラットフォーム展開 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin の同じコードが Cloudflare Pages と EdgeOne Pages の両方にデプロイされています。画像ホスティングは各プラットフォーム自身のストレージを使いながら、まったく同じインターフェースとリンク規則を提供します。&#34;,&#34;image&#34;:&#34;/og/posts/ja/astro-blog-admin-deploy.png?v=13&#34;,&#34;imageAlt&#34;:&#34;1つのコードベース、2つの家：画像ホスティングの二重ストレージと二重プラットフォーム展開&#34;},&#34;ko&#34;:{&#34;title&#34;:&#34;코드베이스 하나, 집 둘: 이미지 호스팅 이중 스토리지와 이중 플랫폼 배포 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin의 같은 코드가 Cloudflare Pages와 EdgeOne Pages 양쪽에 배포됩니다. 이미지 호스팅은 각 플랫폼의 자체 스토리지를 쓰면서도 완전히 같은 인터페이스와 링크 규칙을 제공합니다.&#34;,&#34;image&#34;:&#34;/og/posts/ko/astro-blog-admin-deploy.png?v=13&#34;,&#34;imageAlt&#34;:&#34;코드베이스 하나, 집 둘: 이미지 호스팅 이중 스토리지와 이중 플랫폼 배포&#34;},&#34;zh-Hans&#34;:{&#34;title&#34;:&#34;一套代码两个家：图床双存储与双平台部署 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin 同一份代码同时部署在 Cloudflare Pages 和 EdgeOne Pages 上；图床在两边各用自家存储，却给出一模一样的界面和链接规则。&#34;,&#34;image&#34;:&#34;/og/posts/zh-hans/astro-blog-admin-deploy.png?v=13&#34;,&#34;imageAlt&#34;:&#34;一套代码两个家：图床双存储与双平台部署&#34;},&#34;zh-Hant&#34;:{&#34;title&#34;:&#34;一套程式碼兩個家：圖床雙儲存與雙平台部署 · Hooleeas Blog&#34;,&#34;description&#34;:&#34;astro-blog-admin 同一份程式碼同時部署在 Cloudflare Pages 和 EdgeOne Pages 上；圖床在兩邊各用自家儲存，卻給出一模一樣的介面和連結規則。&#34;,&#34;image&#34;:&#34;/og/posts/zh-hant/astro-blog-admin-deploy.png?v=13&#34;,&#34;imageAlt&#34;:&#34;一套程式碼兩個家：圖床雙儲存與雙平台部署&#34;}}"> <head><script>
+      (() => {
+        document.documentElement.dataset.languagePending = "true";
+        if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+          document.documentElement.dataset.navigationHoverSuppressed = "true";
+        }
+        const root = document.documentElement;
+        if (
+          root.dataset.pageType === "article" &&
+          window.matchMedia("(max-width: 980px)").matches
+        ) {
+          root.classList.add("toc-hidden");
+        }
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const cachedLanguage = localStorage.getItem("language-preference");
+        const normalizedCachedLanguage = cachedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : cachedLanguage;
+        const pageUrl = new URL(window.location.href);
+        const requestedLanguage =
+          new URLSearchParams(pageUrl.hash.slice(1)).get("lang") ??
+          pageUrl.searchParams.get("lang") ??
+          root.dataset.shareLanguage;
+        const normalizedRequestedLanguage = requestedLanguage === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : requestedLanguage;
+        const hasRequestedLanguage = availableLanguages.includes(normalizedRequestedLanguage);
+        const hasCachedLanguage = availableLanguages.includes(normalizedCachedLanguage);
+        const systemLanguages = hasRequestedLanguage || hasCachedLanguage
+          ? []
+          : navigator.languages?.length
+            ? navigator.languages
+            : [navigator.language];
+        const systemLanguage = systemLanguages
+          .map((value) => value.toLowerCase().replaceAll("_", "-"))
+          .map((value) => {
+            const exact = availableLanguages.find((language) => language.toLowerCase() === value);
+            if (exact) return exact;
+            const directMatch = availableLanguages.find((language) =>
+              value.startsWith(`${language.toLowerCase()}-`),
+            );
+            if (directMatch) return directMatch;
+            if (value.startsWith("zh-")) {
+              const script = /-(hant|tw|hk|mo)(-|$)/i.test(value) ? "zh-Hant" : "zh-Hans";
+              return availableLanguages.includes(script) ? script : undefined;
+            }
+            return undefined;
+          })
+          .find(Boolean);
+        const language = hasRequestedLanguage
+          ? normalizedRequestedLanguage
+          : hasCachedLanguage
+          ? normalizedCachedLanguage
+          : systemLanguage ?? defaultLanguage;
+        if (hasRequestedLanguage && (pageUrl.hash || root.dataset.shareLanguage)) {
+          localStorage.setItem("language-preference", language);
+        }
+        document.documentElement.dataset.language = language;
+        document.documentElement.lang = language;
+        const savedTheme = localStorage.getItem("theme");
+        if (!savedTheme) {
+          const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          localStorage.setItem("theme", systemTheme);
+          document.documentElement.classList.toggle("dark", systemTheme === "dark");
+        }
+        const homePostView = localStorage.getItem("home-post-view");
+        document.documentElement.dataset.homePostView =
+          homePostView === "grid" ? "grid" : "list";
+        const markScrollRestoration = (root) => {
+          root.setAttribute("data-scroll-restoring", "");
+        };
+        const pauseCarousels = (root) => {
+          root.setAttribute("data-carousel-navigation", "");
+        };
+        const resumeCarousels = (root) => {
+          root.removeAttribute("data-carousel-navigation");
+        };
+        const resumeCarouselsAfterImagesDecode = async () => {
+          const root = document.documentElement;
+          const logos = new Map();
+          document
+            .querySelectorAll(
+              ".about-skills-marquee .creativity-set img, .creativity-marquee .creativity-set img, .creativity-mobile-marquee .creativity-set img",
+            )
+            .forEach((image) => {
+              if (image instanceof HTMLImageElement) {
+                logos.set(image.currentSrc || image.src, image);
+              }
+            });
+
+          await Promise.allSettled(
+            [...logos.values()].map((image) => image.decode()),
+          );
+          if (root !== document.documentElement) return;
+
+          await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+          if (root === document.documentElement) {
+            resumeCarousels(root);
+          }
+        };
+        const hasCarousels = (document) =>
+          document.querySelector(".about-page, .home-visual .creativity-marquee");
+        const hasCarouselAtTarget = (url) => {
+          const path = new URL(url, window.location.href).pathname;
+          const base = (root.dataset.baseUrl || "/").replace(/\/+$/, "");
+          const sitePath = base && path.startsWith(`${base}/`) ? path.slice(base.length) : path;
+          const normalizedPath = sitePath.replace(/\/+$/, "");
+          return normalizedPath === "" || normalizedPath === "/" || normalizedPath === "/about";
+        };
+        const clearScrollRestoration = () => {
+          document.documentElement.removeAttribute("data-scroll-restoring");
+        };
+
+        markScrollRestoration(document.documentElement);
+        pauseCarousels(document.documentElement);
+        document.addEventListener("astro:before-preparation", (event) => {
+          if (hasCarousels(document) || hasCarouselAtTarget(event.to)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        document.addEventListener("astro:before-swap", (event) => {
+          event.newDocument.documentElement.dataset.languagePending = "true";
+          event.newDocument.documentElement.dataset.navigationGradientReady = "true";
+          if (sessionStorage.getItem("navigation-hover-suppressed") === "true") {
+            event.newDocument.documentElement.dataset.navigationHoverSuppressed = "true";
+          }
+          markScrollRestoration(document.documentElement);
+          markScrollRestoration(event.newDocument.documentElement);
+          const currentHeader = document.querySelector(".site-header");
+          const currentCapsule = currentHeader?.querySelector(".header-inner");
+          delete window.navigationGradientStartRatio;
+          if (currentCapsule && currentHeader?.dataset.pageType !== "article") {
+            const currentWidth = currentCapsule.getBoundingClientRect().width;
+            const gradientTransform = getComputedStyle(
+              currentCapsule,
+              "::before",
+            ).transform;
+            const currentShift =
+              gradientTransform === "none"
+                ? 0
+                : new DOMMatrixReadOnly(gradientTransform).m41;
+            if (currentWidth > 0 && Number.isFinite(currentShift)) {
+              window.navigationGradientStartRatio =
+                0.5 + currentShift / currentWidth;
+            }
+          }
+          if (hasCarousels(document) || hasCarousels(event.newDocument)) {
+            pauseCarousels(document.documentElement);
+            pauseCarousels(event.newDocument.documentElement);
+          }
+        });
+        document.addEventListener("astro:after-swap", clearScrollRestoration);
+        document.addEventListener("astro:page-load", clearScrollRestoration, {
+          once: true,
+        });
+        document.addEventListener("astro:page-load", resumeCarouselsAfterImagesDecode);
+        window.addEventListener("pagehide", () => {
+          if (hasCarousels(document)) {
+            pauseCarousels(document.documentElement);
+          }
+        });
+        window.addEventListener("pageshow", (event) => {
+          if (event.persisted) {
+            resumeCarouselsAfterImagesDecode();
+          }
+        });
+      })();
+    </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="none"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.QW52Ox2j.js"></script><script data-astro-rerun>
+      (() => {
+      const applySavedTheme = (root) => {
+        root.classList.toggle("dark", localStorage.getItem("theme") === "dark");
+      };
+      applySavedTheme(document.documentElement);
+      if (!window.themeSwapListenerInstalled) {
+        window.themeSwapListenerInstalled = true;
+        document.addEventListener("astro:before-swap", (event) => {
+          applySavedTheme(event.newDocument.documentElement);
+        });
+      }
+      })();
+    </script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform's own storage, yet presents an identical interface and link rules."><link rel="canonical" href="https://hooleeas.github.io/astro-blog-admin-deploy/"><meta property="og:type" content="article"><meta property="og:site_name" content="Hooleeas"><meta property="og:locale" content="en_US"><meta property="og:title" content="One codebase, two homes: dual storage and dual-platform deployment · Hooleeas Blog"><meta property="og:description" content="The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform's own storage, yet presents an identical interface and link rules."><meta property="og:url" content="https://hooleeas.github.io/astro-blog-admin-deploy/en/"><meta property="og:image" content="https://hooleeas.github.io/og/posts/en/astro-blog-admin-deploy.png?v=13"><meta property="og:image:alt" content="One codebase, two homes: dual storage and dual-platform deployment"><meta name="twitter:image:alt" content="One codebase, two homes: dual storage and dual-platform deployment"><meta property="og:image:width" content="1800"><meta property="og:image:height" content="600"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="One codebase, two homes: dual storage and dual-platform deployment · Hooleeas Blog"><meta name="twitter:description" content="The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform's own storage, yet presents an identical interface and link rules."><meta name="twitter:image" content="https://hooleeas.github.io/og/posts/en/astro-blog-admin-deploy.png?v=13"><link rel="icon" href="/icon/favicon.ico?v=8" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" href="/icon/icon_16x16.png?v=8" sizes="16x16"><link rel="icon" type="image/png" href="/icon/icon_32x32.png?v=8" sizes="32x32"><link rel="icon" type="image/png" href="/icon/icon_48x48.png?v=8" sizes="48x48"><link rel="icon" type="image/png" href="/icon/icon_512x512.png?v=8" sizes="512x512"><link rel="apple-touch-icon" sizes="180x180" href="/icon/icon_180x180.png?v=8"><link rel="manifest" href="/icon/site.webmanifest?v=8"><title>One codebase, two homes: dual storage and dual-platform deployment · Hooleeas Blog</title><link rel="stylesheet" href="/_astro/_slug_.DIaYWNEb.css"></head> <body> <svg class="glass-filter-definitions" aria-hidden="true" focusable="false"> <filter id="liquid-glass-refraction" x="-20%" y="-20%" width="140%" height="140%"> <feTurbulence type="fractalNoise" baseFrequency="0.035 0.045" numOctaves="1" seed="7" result="glass-noise"></feTurbulence> <feDisplacementMap in="SourceGraphic" in2="glass-noise" scale="2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap> </filter> </svg> <header class="site-header" data-page-type="article"> <div class="container header-inner"> <a class="brand" href="/" data-home-link data-i18n="navigationHome"> 主页 </a> <div class="nav-controls"> <button class="toc-toggle" type="button" aria-label="隐藏文章目录" aria-pressed="false" data-toc-toggle data-i18n-aria="hideArticleContents"><img class="toc-toggle-icon" src="https://developer.apple.com/tutorials/images/com.apple.HIG/jp/icons-symbols-meaning-find@2x.png" alt="" aria-hidden="true"></button> <div class="share-control" data-share-control> <button class="share-trigger" type="button" aria-label="分享页面" aria-expanded="false" aria-controls="page-share-menu" data-share-toggle data-i18n-aria="shareMenuLabel"> <img class="share-icon" src="https://developer.apple.com/tutorials/images/com.apple.HIG/jp/icons-symbols-meaning-sharing@2x.png" alt="" aria-hidden="true"> </button> <div class="share-menu" id="page-share-menu" role="menu" hidden> <div class="share-qr-section" role="group"> <strong class="share-menu-heading" data-i18n="shareMenuHeading">分享此页面</strong> <canvas class="share-qr-code" width="160" height="160" role="img" aria-label="页面二维码" data-i18n-aria="shareQrCode" data-share-qr-code></canvas> <span class="share-qr-label" data-i18n="shareQrCode">扫码访问此页面</span> </div> <a class="share-menu-item" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" role="menuitem" data-share-x data-i18n="shareToX">分享到 X</a> <button class="share-menu-item" type="button" role="menuitem" data-share-copy data-i18n="copyShareLink">复制链接</button> </div> </div> <div class="language-picker"> <span class="language-glyph" aria-hidden="true"><span>文</span><small>A</small></span> <select class="language-select" aria-label="选择语言" data-i18n-aria="languagePicker" data-language-select> <option value="zh-Hans">简体中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh-Hant">繁體中文</option> </select> </div> <button class="toggle" aria-label="Toggle theme" data-i18n-aria="themeToggle" data-theme-toggle>
+◐
+</button> </div> <button class="mobile-menu-toggle" type="button" aria-label="打开导航菜单" aria-expanded="false" data-mobile-menu-toggle> <span></span><span></span><span></span> </button> </div> <nav class="site-nav"> <div class="nav-links"> <a href="/archive/" data-i18n="archive">文章归档</a><a href="/notes/" data-i18n="notes">随记</a><a href="/charity/" data-i18n="services">公益服务</a><a href="/about/" data-i18n="about">关于</a> </div> </nav> </header> <div class="mobile-nav-backdrop" data-mobile-nav-backdrop></div> <main> <div class="container"><section class="localized-article" lang="en"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-03 · Projects</div><h1 class="page-title">One codebase, two homes: dual storage and dual-platform deployment</h1><p class="lead">The same astro-blog-admin code deploys to both Cloudflare Pages and EdgeOne Pages. Its image bed uses each platform&#39;s own storage, yet presents an identical interface and link rules.</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>Image Hosting</span><span>Deployment</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="One codebase, two homes: dual storage and dual-platform deployment" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="en"><div class="prose"><p>astro-blog-admin has an unusual deployment story: one repository, one branch, deployed at the same time to Cloudflare Pages and Tencent EdgeOne Pages, with feature parity and an identical interface on both. This article covers how its built-in image bed lands on the two platforms, and what dual-platform development gives — and teaches.</p>
+<h2 id="the-image-bed-upload-get-a-link-done">The image bed: upload, get a link, done</h2>
+<h3 id="a-public-upload-page">A public upload page</h3>
+<p>The site’s root path is a login-free public upload page: pick an image, upload it, get a link — nothing more. It cannot manage images or touch settings. The in-admin image page adds management: large previews, checkbox batch deletion, and a lightbox for full-size viewing. PNG/JPG uploads are converted to WebP in the browser first to save space, and upload progress is a set of thin bars at the top of the page that fade away when done.</p>
+<h3 id="link-rules">Link rules</h3>
+<p>Image URLs are root-relative only: <code>/&#x3C;prefix>/&#x3C;filename></code>, no domain. The prefix is customizable in settings, and it does not matter which domain serves the page — change domains or platforms and every image URL already written into your posts keeps working. Uploading a file whose name already exists auto-renames it with a suffix instead of overwriting.</p>
+<h2 id="dual-storage-one-interface-two-backends">Dual storage: one interface, two backends</h2>
+<h3 id="a-storage-abstraction-layer">A storage abstraction layer</h3>
+<p>Upload, read, list and delete all go through one storage layer, dispatched by configuration: on Cloudflare it prefers a bound R2 bucket and falls back to the S3-compatible API; on EdgeOne it uses the platform’s own Blob store. Even the settings label is platform-aware — the second storage tier is called “Cloudflare R2” on Cloudflare and “EdgeOne Blob” on EdgeOne, while the stored configuration value stays the same and neither side affects the other.</p>
+<h3 id="switching-does-not-migrate">Switching does not migrate</h3>
+<p>The two stores are independent: an image uploaded to R2 is invisible when you switch to Blob, and back again when you switch back. This “no automatic moving” is deliberate — storage is a platform asset, and the code’s job is to do things right on the platform it is currently running on.</p>
+<h2 id="dual-platform-deployment">Dual-platform deployment</h2>
+<h3 id="platform-detection-at-build-time">Platform detection at build time</h3>
+<p>The build command is identical on both sides. At build time the code detects where it is (from marker variables the platform injects), bakes the answer into the output, and at runtime follows platform-specific storage and configuration paths. One codebase, one branch, two deployments — no near-duplicate repositories to maintain.</p>
+<h3 id="the-lesson-variables-first-code-second">The lesson: variables first, code second</h3>
+<p>The biggest dual-platform trap is not in the code but in configuration: any change involving environment variables must update and read-back-verify the variables on the platform side first, and only then push code — because a push is a deployment, and reversing the order leaves production running without the variables it needs for a while. Each platform’s variables are independent, so the discipline has to be performed twice.</p>
+<p>That closes this six-article series: the blog itself, multilingual, content shapes, the admin overview, visual editing, and the image bed with deployment. Both projects are open source — come and see what they look like now in their GitHub repositories.</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#the-image-bed-upload-get-a-link-done" data-depth="2" style="padding-left: 14px"><span>The image bed: upload, get a link, done</span></a><a href="#a-public-upload-page" data-depth="3" style="padding-left: 28px"><span>A public upload page</span></a><a href="#link-rules" data-depth="3" style="padding-left: 28px"><span>Link rules</span></a><a href="#dual-storage-one-interface-two-backends" data-depth="2" style="padding-left: 14px"><span>Dual storage: one interface, two backends</span></a><a href="#a-storage-abstraction-layer" data-depth="3" style="padding-left: 28px"><span>A storage abstraction layer</span></a><a href="#switching-does-not-migrate" data-depth="3" style="padding-left: 28px"><span>Switching does not migrate</span></a><a href="#dual-platform-deployment" data-depth="2" style="padding-left: 14px"><span>Dual-platform deployment</span></a><a href="#platform-detection-at-build-time" data-depth="3" style="padding-left: 28px"><span>Platform detection at build time</span></a><a href="#the-lesson-variables-first-code-second" data-depth="3" style="padding-left: 28px"><span>The lesson: variables first, code second</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="ja"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-03 · プロジェクト紹介</div><h1 class="page-title">1つのコードベース、2つの家：画像ホスティングの二重ストレージと二重プラットフォーム展開</h1><p class="lead">astro-blog-admin の同じコードが Cloudflare Pages と EdgeOne Pages の両方にデプロイされています。画像ホスティングは各プラットフォーム自身のストレージを使いながら、まったく同じインターフェースとリンク規則を提供します。</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>画像ホスティング</span><span>デプロイ</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="1つのコードベース、2つの家：画像ホスティングの二重ストレージと二重プラットフォーム展開" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="ja"><div class="prose"><p>astro-blog-admin には少し珍しいデプロイ方式があります。1 つのリポジトリ、1 つのブランチを、Cloudflare Pages と Tencent EdgeOne Pages の 2 プラットフォームへ同時にデプロイし、両側で機能は対等、インターフェースは同一です。本稿では内蔵の画像ホスティングが 2 プラットフォームにどう着地したか、そして二重プラットフォームが開発にもたらす利点と教訓を扱います。</p>
+<h2 id="画像ホスティングアップロードしてリンクを得るそれだけ">画像ホスティング：アップロードして、リンクを得る、それだけ</h2>
+<h3 id="公開アップロードページ">公開アップロードページ</h3>
+<p>サイトのルートパスはログイン不要の公開アップロードページです。画像を選んで、アップロードして、リンクを得る——それだけ。管理も設定変更もできません。管理画面内の画像ページには管理機能が加わります：大きなプレビュー、チェックボックスでの一括削除、ライトボックスでの原寸表示。アップロード時、PNG/JPG は空間の節約のためにブラウザ側で先に WebP へ変換され、進捗はページ上部の細いバーが複数並ぶ形で示され、完了すると自動で消えます。</p>
+<h3 id="リンクの規則">リンクの規則</h3>
+<p>画像の URL はルート相対のみ：<code>/&#x3C;接頭辞>/&#x3C;ファイル名></code>、ドメインを含みません。接頭辞は設定でカスタマイズでき、どのドメインで開くかは関係ありません——ドメインやプラットフォームを変えても、記事に書かれた画像 URL はそのまま動きます。同名ファイルの再アップロードは上書きせず、自動で連番を付けて改名されます。</p>
+<h2 id="二重ストレージ1-つのインターフェース2-つのバックエンド">二重ストレージ：1 つのインターフェース、2 つのバックエンド</h2>
+<h3 id="ストレージ抽象化レイヤー">ストレージ抽象化レイヤー</h3>
+<p>アップロード、読み取り、一覧、削除はすべて統一されたストレージ層を通り、設定に応じて振り分けられます。Cloudflare 側ではバインドされた R2 バケットを優先し、なければ S3 互換 API を使い、EdgeOne 側ではプラットフォーム標準の Blob ストレージを使います。設定ページの第 2 ティアの呼び名までプラットフォーム対応で、Cloudflare では「Cloudflare R2」、EdgeOne では「EdgeOne Blob」と表示されますが、保存される設定値は同じで、両側は互いに影響しません。</p>
+<h3 id="切替で移行はしない">切替で移行はしない</h3>
+<p>2 つのストレージは独立しています。R2 に上げた画像は Blob に切り替えると見えず、戻すとまた見えます。この「自動で引っ越さない」設計は意図的です——ストレージはプラットフォームの資産であり、コードの仕事は今動いているプラットフォームで物事を正しく行うことだからです。</p>
+<h2 id="二重プラットフォーム展開">二重プラットフォーム展開</h2>
+<h3 id="ビルド時のプラットフォーム判定">ビルド時のプラットフォーム判定</h3>
+<p>ビルドコマンドは両側で同一です。コードはビルド時に、プラットフォームが注入するマーカー変数から「自分がどこにいるか」を判定し、その結果を成果物に焼き込んで、実行時にプラットフォーム別のストレージと設定読み込みへ分岐します。1 つのコードベース、1 つのブランチ、2 回のデプロイ。似たようなリポジトリを 2 つ保守する必要はありません。</p>
+<h3 id="教訓変数が先コードは後">教訓：変数が先、コードは後</h3>
+<p>二重プラットフォーム最大の落とし穴はコードではなく設定にあります。環境変数に関わる変更は、まずプラットフォーム側で変数を変更し、読み戻して検証してから、コードをプッシュしなければなりません——プッシュ即デプロイなので、順序が逆だと本番がしばらく変数不足の状態で動くことになります。各プラットフォームの変数は独立しているため、この規律は 2 回実行する必要があります。</p>
+<p>この 6 本のシリーズはここまでです：ブログ本体、多言語、コンテンツの形、管理画面の概要、ビジュアル編集、画像ホスティングとデプロイ。どちらのプロジェクトもオープンソースです。GitHub リポジトリで今の姿をぜひ見てみてください。</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#画像ホスティングアップロードしてリンクを得るそれだけ" data-depth="2" style="padding-left: 14px"><span>画像ホスティング：アップロードして、リンクを得る、それだけ</span></a><a href="#公開アップロードページ" data-depth="3" style="padding-left: 28px"><span>公開アップロードページ</span></a><a href="#リンクの規則" data-depth="3" style="padding-left: 28px"><span>リンクの規則</span></a><a href="#二重ストレージ1-つのインターフェース2-つのバックエンド" data-depth="2" style="padding-left: 14px"><span>二重ストレージ：1 つのインターフェース、2 つのバックエンド</span></a><a href="#ストレージ抽象化レイヤー" data-depth="3" style="padding-left: 28px"><span>ストレージ抽象化レイヤー</span></a><a href="#切替で移行はしない" data-depth="3" style="padding-left: 28px"><span>切替で移行はしない</span></a><a href="#二重プラットフォーム展開" data-depth="2" style="padding-left: 14px"><span>二重プラットフォーム展開</span></a><a href="#ビルド時のプラットフォーム判定" data-depth="3" style="padding-left: 28px"><span>ビルド時のプラットフォーム判定</span></a><a href="#教訓変数が先コードは後" data-depth="3" style="padding-left: 28px"><span>教訓：変数が先、コードは後</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="ko"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-03 · 프로젝트 소개</div><h1 class="page-title">코드베이스 하나, 집 둘: 이미지 호스팅 이중 스토리지와 이중 플랫폼 배포</h1><p class="lead">astro-blog-admin의 같은 코드가 Cloudflare Pages와 EdgeOne Pages 양쪽에 배포됩니다. 이미지 호스팅은 각 플랫폼의 자체 스토리지를 쓰면서도 완전히 같은 인터페이스와 링크 규칙을 제공합니다.</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>이미지 호스팅</span><span>배포</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="코드베이스 하나, 집 둘: 이미지 호스팅 이중 스토리지와 이중 플랫폼 배포" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="ko"><div class="prose"><p>astro-blog-admin에는 조금 특이한 배포 방식이 있습니다. 저장소 하나, 브랜치 하나를 Cloudflare Pages와 Tencent EdgeOne Pages 두 플랫폼에 동시에 배포해, 양쪽의 기능이 대등하고 인터페이스가 동일합니다. 이 글에서는 내장 이미지 호스팅이 두 플랫폼에 어떻게 자리 잡았는지, 그리고 이중 플랫폼이 개발에 주는 이점과 교훈을 다룹니다.</p>
+<h2 id="이미지-호스팅-올리고-링크-받고-그게-다">이미지 호스팅: 올리고, 링크 받고, 그게 다</h2>
+<h3 id="공개-업로드-페이지">공개 업로드 페이지</h3>
+<p>사이트의 루트 경로는 로그인 없는 공개 업로드 페이지입니다. 이미지를 고르고, 올리고, 링크를 받는다——그뿐입니다. 관리를 보거나 설정을 만질 수는 없습니다. 관리 화면 안의 이미지 페이지에는 관리 기능이 더해집니다. 큰 미리보기, 체크박스 일괄 삭제, 라이트박스로 원본 크기 보기. 업로드할 때 PNG/JPG는 공간 절약을 위해 브라우저에서 먼저 WebP로 변환되고, 업로드 진행 상황은 페이지 위쪽의 가는 진행 바 여러 개로 표시되며 끝나면 자동으로 사라집니다.</p>
+<h3 id="링크-규칙">링크 규칙</h3>
+<p>이미지 주소는 루트 상대 경로만 씁니다. <code>/&#x3C;접두사>/&#x3C;파일 이름></code>, 도메인은 붙지 않습니다. 접두사는 설정에서 바꿀 수 있고 어떤 도메인으로 열든 상관없습니다——도메인이나 플랫폼을 바꿔도 글에 이미 적어 둔 이미지 주소는 그대로 동작합니다. 같은 이름의 파일을 다시 올리면 덮어쓰지 않고 자동으로 번호를 붙여 이름을 바꿉니다.</p>
+<h2 id="이중-스토리지-인터페이스-하나-백엔드-둘">이중 스토리지: 인터페이스 하나, 백엔드 둘</h2>
+<h3 id="스토리지-추상화-계층">스토리지 추상화 계층</h3>
+<p>업로드, 읽기, 목록, 삭제는 모두 통일된 스토리지 계층을 거치며 설정에 따라 분기됩니다. Cloudflare 쪽에서는 바인딩된 R2 버킷을 우선 쓰고, 없으면 S3 호환 인터페이스를 쓰고, EdgeOne 쪽에서는 플랫폼 자체의 Blob 스토리지를 씁니다. 설정 페이지의 두 번째 스토리지 이름까지 플랫폼을 따릅니다. Cloudflare에서는 “Cloudflare R2”, EdgeOne에서는 “EdgeOne Blob”로 표시되지만 저장되는 설정 값은 같고, 양쪽은 서로 영향을 주지 않습니다.</p>
+<h3 id="전환해도-마이그레이션은-없다">전환해도 마이그레이션은 없다</h3>
+<p>두 스토리지는 독립적입니다. R2에 올린 이미지는 Blob으로 전환하면 보이지 않고, 되돌리면 다시 보입니다. 이 “자동으로 이사하지 않는” 설계는 의도적입니다——스토리지는 플랫폼의 자산이고, 코드의 일은 지금 돌아가고 있는 플랫폼에서 일을 제대로 처리하는 것이기 때문입니다.</p>
+<h2 id="이중-플랫폼-배포">이중 플랫폼 배포</h2>
+<h3 id="빌드-시점의-플랫폼-판별">빌드 시점의 플랫폼 판별</h3>
+<p>빌드 명령은 양쪽이 같습니다. 코드는 빌드 시점에 플랫폼이 주입하는 표식 변수로 “자기가 어디에 있는지”를 판별해 그 결과를 결과물에 새기고, 실행 시에는 플랫폼별 스토리지와 설정 읽기 경로를 탑니다. 코드베이스 하나, 브랜치 하나, 배포 두 번. 비슷한 저장소 두 개를 유지할 필요가 없습니다.</p>
+<h3 id="교훈-변수-먼저-코드는-나중">교훈: 변수 먼저, 코드는 나중</h3>
+<p>이중 플랫폼의 가장 큰 함정은 코드가 아니라 설정에 있습니다. 환경 변수와 관련된 변경은 반드시 플랫폼 쪽에서 변수를 먼저 바꾸고 되읽어 검증한 다음 코드를 푸시해야 합니다——푸시가 곧 배포라, 순서가 반대면 운영 환경이 한동안 변수가 부족한 채로 돌게 되기 때문입니다. 각 플랫폼의 변수는 독립적이라 이 규율을 두 번 실행해야 합니다.</p>
+<p>여섯 편의 시리즈는 여기까지입니다. 블로그 본체, 다국어, 콘텐츠의 형태, 관리 화면 개요, 시각적 편집, 이미지 호스팅과 배포. 두 프로젝트 모두 오픈소스이니, GitHub 저장소에서 지금의 모습을 구경해 보세요.</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#이미지-호스팅-올리고-링크-받고-그게-다" data-depth="2" style="padding-left: 14px"><span>이미지 호스팅: 올리고, 링크 받고, 그게 다</span></a><a href="#공개-업로드-페이지" data-depth="3" style="padding-left: 28px"><span>공개 업로드 페이지</span></a><a href="#링크-규칙" data-depth="3" style="padding-left: 28px"><span>링크 규칙</span></a><a href="#이중-스토리지-인터페이스-하나-백엔드-둘" data-depth="2" style="padding-left: 14px"><span>이중 스토리지: 인터페이스 하나, 백엔드 둘</span></a><a href="#스토리지-추상화-계층" data-depth="3" style="padding-left: 28px"><span>스토리지 추상화 계층</span></a><a href="#전환해도-마이그레이션은-없다" data-depth="3" style="padding-left: 28px"><span>전환해도 마이그레이션은 없다</span></a><a href="#이중-플랫폼-배포" data-depth="2" style="padding-left: 14px"><span>이중 플랫폼 배포</span></a><a href="#빌드-시점의-플랫폼-판별" data-depth="3" style="padding-left: 28px"><span>빌드 시점의 플랫폼 판별</span></a><a href="#교훈-변수-먼저-코드는-나중" data-depth="3" style="padding-left: 28px"><span>교훈: 변수 먼저, 코드는 나중</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="zh-Hans"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-03 · 项目介绍</div><h1 class="page-title">一套代码两个家：图床双存储与双平台部署</h1><p class="lead">astro-blog-admin 同一份代码同时部署在 Cloudflare Pages 和 EdgeOne Pages 上；图床在两边各用自家存储，却给出一模一样的界面和链接规则。</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>图床</span><span>部署</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="一套代码两个家：图床双存储与双平台部署" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="zh-Hans"><div class="prose"><p>astro-blog-admin 有一个不常见的部署方式：同一个仓库、同一个分支，同时部署在 Cloudflare Pages 和腾讯 EdgeOne Pages 两个平台上，两边功能对等、界面一致。这一篇聊它自带的图床是怎么在两个平台上落地的，以及双平台给开发带来的好处和教训。</p>
+<h2 id="图床上传拿链接就这么简单">图床：上传，拿链接，就这么简单</h2>
+<h3 id="公开上传页">公开上传页</h3>
+<p>站点根路径就是免登录的公开上传页：选图、上传、拿到链接，仅此而已，不能看管理、不能改设置。后台里的图床页则多了图片管理：大图预览、批量勾选删除、点开灯箱看大图。上传时 PNG/JPG 会在浏览器里先转成 WebP 再传，省空间；上传进度是页面顶部的多条细进度条，传完自动消失。</p>
+<h3 id="链接规则">链接规则</h3>
+<p>图片地址只用根路径形式：<code>/&#x3C;前缀>/&#x3C;文件名></code>，不带域名。前缀可以在设置里自定义，跟用哪个域名打开无关——换域名、换平台，文章里写好的图片地址都不用动。同名文件再传会自动改名加序号，不覆盖旧图。</p>
+<h2 id="双存储一套界面两种后端">双存储：一套界面，两种后端</h2>
+<h3 id="存储层抽象">存储层抽象</h3>
+<p>图床的上传、读取、列表、删除都走统一的存储层，按配置分发：Cloudflare 侧优先用绑定的 R2 存储桶，没有绑定就走 S3 兼容接口；EdgeOne 侧用平台自带的 Blob 存储。设置页里第二档存储的叫法会按平台显示——在 Cloudflare 上叫 Cloudflare R2，在 EdgeOne 上叫 EdgeOne Blob，存的配置值不变，两边互不影响。</p>
+<h3 id="切换不迁移">切换不迁移</h3>
+<p>两边存储各自独立：在 R2 里传的图，切到 Blob 是看不见的，切回来又在。这种“不自动搬家”的设计是故意的——存储是平台资产，代码只负责在当前平台把事办对。</p>
+<h2 id="双平台部署">双平台部署</h2>
+<h3 id="构建时识别平台">构建时识别平台</h3>
+<p>构建命令两边相同，代码在构建时自己判断身在何处（靠平台注入的标志变量），把结果烧进产物，运行时再按平台走不同的存储与配置读取。一份代码、一个分支、两次部署，不用维护两套近似的仓库。</p>
+<h3 id="教训先改变量再推代码">教训：先改变量，再推代码</h3>
+<p>双平台最大的坑不在代码，在配置：涉及环境变量的改动，必须先在平台侧改好变量、回读验证，再推代码——因为推送即部署，顺序反了，线上就会有一段时间在缺变量的状态下运行。两个平台的环境变量各自独立，这条纪律要执行两遍。</p>
+<p>这个系列的六篇文章到这里就结束了：博客本体、多语言、内容形态、后台总览、可视化编辑、图床与部署。两个项目都是开源的，欢迎到 GitHub 仓库里看看它们现在的样子。</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#图床上传拿链接就这么简单" data-depth="2" style="padding-left: 14px"><span>图床：上传，拿链接，就这么简单</span></a><a href="#公开上传页" data-depth="3" style="padding-left: 28px"><span>公开上传页</span></a><a href="#链接规则" data-depth="3" style="padding-left: 28px"><span>链接规则</span></a><a href="#双存储一套界面两种后端" data-depth="2" style="padding-left: 14px"><span>双存储：一套界面，两种后端</span></a><a href="#存储层抽象" data-depth="3" style="padding-left: 28px"><span>存储层抽象</span></a><a href="#切换不迁移" data-depth="3" style="padding-left: 28px"><span>切换不迁移</span></a><a href="#双平台部署" data-depth="2" style="padding-left: 14px"><span>双平台部署</span></a><a href="#构建时识别平台" data-depth="3" style="padding-left: 28px"><span>构建时识别平台</span></a><a href="#教训先改变量再推代码" data-depth="3" style="padding-left: 28px"><span>教训：先改变量，再推代码</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section><section class="localized-article" lang="zh-Hant"><header class="article-header-card has-cover"><div class="article-header-copy"><div class="eyebrow">2026-11-03 · 項目介紹</div><h1 class="page-title">一套程式碼兩個家：圖床雙儲存與雙平台部署</h1><p class="lead">astro-blog-admin 同一份程式碼同時部署在 Cloudflare Pages 和 EdgeOne Pages 上；圖床在兩邊各用自家儲存，卻給出一模一樣的介面和連結規則。</p><div class="article-tags" aria-label="文章标签" data-i18n-aria="articleTags"><span>Astro</span><span>圖床</span><span>部署</span></div></div><img class="article-cover" src="https://astro-blog-admin.pages.dev/images/cover-admin-deploy.webp" alt="一套程式碼兩個家：圖床雙儲存與雙平台部署" fetchpriority="high"></header><div class="article-layout"><article class="page article-main" lang="zh-Hant"><div class="prose"><p>astro-blog-admin 有一個不常見的部署方式：同一個倉庫、同一個分支，同時部署在 Cloudflare Pages 和騰訊 EdgeOne Pages 兩個平台上，兩邊功能對等、介面一致。這一篇聊它自帶的圖床是怎麼在兩個平台上落地的，以及雙平台給開發帶來的好處和教訓。</p>
+<h2 id="圖床上傳拿連結就這麼簡單">圖床：上傳，拿連結，就這麼簡單</h2>
+<h3 id="公開上傳頁">公開上傳頁</h3>
+<p>站點根路徑就是免登入的公開上傳頁：選圖、上傳、拿到連結，僅此而已，不能看管理、不能改設定。後台裡的圖床頁則多了圖片管理：大圖預覽、批量勾選刪除、點開燈箱看大圖。上傳時 PNG/JPG 會在瀏覽器裡先轉成 WebP 再傳，省空間；上傳進度是頁面頂部的多條細進度條，傳完自動消失。</p>
+<h3 id="連結規則">連結規則</h3>
+<p>圖片地址只用根路徑形式：<code>/&#x3C;前綴>/&#x3C;檔案名></code>，不帶域名。前綴可以在設定裡自訂，跟用哪個域名打開無關——換域名、換平台，文章裡寫好的圖片地址都不用動。同名檔案再傳會自動改名加序號，不覆蓋舊圖。</p>
+<h2 id="雙儲存一套介面兩種後端">雙儲存：一套介面，兩種後端</h2>
+<h3 id="儲存層抽象">儲存層抽象</h3>
+<p>圖床的上傳、讀取、列表、刪除都走統一的儲存層，按配置分發：Cloudflare 側優先用綁定的 R2 儲存桶，沒有綁定就走 S3 相容介面；EdgeOne 側用平台自帶的 Blob 儲存。設定頁裡第二檔儲存的叫法會按平台顯示——在 Cloudflare 上叫 Cloudflare R2，在 EdgeOne 上叫 EdgeOne Blob，存的配置值不變，兩邊互不影響。</p>
+<h3 id="切換不遷移">切換不遷移</h3>
+<p>兩邊儲存各自獨立：在 R2 裡傳的圖，切到 Blob 是看不見的，切回來又在。這種「不自動搬家」的設計是故意的——儲存是平台資產，程式碼只負責在目前平台把事辦對。</p>
+<h2 id="雙平台部署">雙平台部署</h2>
+<h3 id="建構時識別平台">建構時識別平台</h3>
+<p>建構命令兩邊相同，程式碼在建構時自己判斷身在何處（靠平台注入的標誌變量），把結果燒進產物，執行時再按平台走不同的儲存與配置讀取。一份程式碼、一個分支、兩次部署，不用維護兩套近似的倉庫。</p>
+<h3 id="教訓先改變量再推程式碼">教訓：先改變量，再推程式碼</h3>
+<p>雙平台最大的坑不在程式碼，在配置：涉及環境變量的改動，必須先在平台側改好變量、回讀驗證，再推程式碼——因為推送即部署，順序反了，線上就會有一段時間在缺變量的狀態下執行。兩個平台的環境變量各自獨立，這條紀律要執行兩遍。</p>
+<p>這個系列的六篇文章到這裡就結束了：部落格本體、多語言、內容形態、後台總覽、可視化編輯、圖床與部署。兩個項目都是開源的，歡迎到 GitHub 倉庫裡看看它們現在的樣子。</p></div></article><aside class="article-toc"><div class="toc-heading"><span class="toc-menu-icon">☰</span><span data-i18n="articleContents">文章目录</span></div><nav class="toc" aria-label="文章目录" data-i18n-aria="articleContents"><a href="#圖床上傳拿連結就這麼簡單" data-depth="2" style="padding-left: 14px"><span>圖床：上傳，拿連結，就這麼簡單</span></a><a href="#公開上傳頁" data-depth="3" style="padding-left: 28px"><span>公開上傳頁</span></a><a href="#連結規則" data-depth="3" style="padding-left: 28px"><span>連結規則</span></a><a href="#雙儲存一套介面兩種後端" data-depth="2" style="padding-left: 14px"><span>雙儲存：一套介面，兩種後端</span></a><a href="#儲存層抽象" data-depth="3" style="padding-left: 28px"><span>儲存層抽象</span></a><a href="#切換不遷移" data-depth="3" style="padding-left: 28px"><span>切換不遷移</span></a><a href="#雙平台部署" data-depth="2" style="padding-left: 14px"><span>雙平台部署</span></a><a href="#建構時識別平台" data-depth="3" style="padding-left: 28px"><span>建構時識別平台</span></a><a href="#教訓先改變量再推程式碼" data-depth="3" style="padding-left: 28px"><span>教訓：先改變量，再推程式碼</span></a></nav></aside></div><aside class="article-share-card" aria-label="分享页面" data-i18n-aria="shareMenuLabel"><div class="article-share-copy"><span class="article-share-eyebrow" data-i18n="shareMenuHeading">分享此页面</span><h2 data-i18n="articleShareTitle">喜欢这篇文章？分享给更多人</h2><p data-i18n="articleShareDescription">扫码打开文章，或将链接分享给朋友。</p><div class="article-share-actions"><a class="article-share-action" href="https://x.com/intent/post" target="_blank" rel="noopener noreferrer" data-share-x data-i18n="shareToX">分享到 X</a><button class="article-share-action" type="button" data-share-copy data-i18n="copyShareLink">复制链接</button></div></div><div class="article-share-qr"><canvas class="share-qr-code" width="160" height="160" role="img" aria-label="扫码访问此页面" data-i18n-aria="shareQrCode" data-share-qr-code></canvas></div></aside></section></div><script type="module">let m;const h=()=>{m?.abort(),m=new AbortController;const{signal:g}=m,w=document.documentElement.dataset.language||"zh-Hans",l=document.querySelector(`.localized-article[lang="${w}"]`)??document.querySelector('.localized-article[lang="zh-Hans"]')??document.querySelector('.localized-article[lang="zh"]')??document.querySelector(".localized-article"),c=[...l?.querySelectorAll(".toc a")??[]],f=c.map(t=>l?.querySelector(t.getAttribute("href")||"")).filter(t=>t!==null);c.forEach(t=>{t.addEventListener("click",e=>{if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;const n=l?.querySelector(t.getAttribute("href")||"");n&&(e.preventDefault(),window.history.pushState(window.history.state,"",t.hash),n.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"start"}))},{signal:g})});let r="",s=0;const p=()=>{const t=document.querySelector(".site-header")?.getBoundingClientRect().bottom??0,e=Math.max(t+32,window.innerHeight*.25);let n=f[0];f.forEach(o=>{o.getBoundingClientRect().top<=e&&(n=o)});const y=n?.id||"";if(y===r)return;r=y,c.forEach(o=>{o.classList.toggle("active",decodeURIComponent(o.hash.slice(1))===r)});const d=c.find(o=>decodeURIComponent(o.hash.slice(1))===r),u=d?.closest(".toc");if(!d||!u)return;const a=d.getBoundingClientRect(),i=u.getBoundingClientRect(),b=a.top<i.top?a.top-i.top:a.bottom>i.bottom?a.bottom-i.bottom:0;b&&(u.scrollTop+=b)};p(),window.addEventListener("scroll",()=>{s||(s=requestAnimationFrame(()=>{s=0,p()}))},{passive:!0,signal:g})};document.addEventListener("astro:page-load",h);document.addEventListener("site-language-change",h);h();</script> </main> <footer> <div class="container">
+© 2026 Hooleeas </div> </footer> <script type="application/json" id="site-translations">{"zh-Hans":{"all":"全部","thisMonth":"本月发布","popular":"热门文章","list":"列表","grid":"网格","learnMore":"了解详细","languagePicker":"选择语言","themeToggle":"切换主题","openMobileMenu":"打开导航菜单","closeMobileMenu":"关闭导航菜单","showArticleContents":"显示文章目录","hideArticleContents":"隐藏文章目录","navigationHome":"主页","articleContents":"文章目录","articleTags":"文章标签","shareMenuLabel":"分享页面","shareMenuHeading":"分享此页面","shareQrCode":"扫码访问此页面","shareToX":"分享到 X","copyShareLink":"复制链接","shareArticleCopied":"链接已复制","shareArticleError":"无法自动复制链接，请手动复制下方地址。","articleShareTitle":"喜欢这篇文章？分享给更多人","articleShareDescription":"扫码打开文章，或将链接分享给朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果这篇文章对你有所帮助，欢迎支持我的创作。","donationBinance":"币安","donationWechat":"微信","donationAlipay":"支付宝","pagination":"文章分页","previousPage":"上一页","nextPage":"下一页","archive":"文章归档","notes":"随记","services":"公益服务","about":"关于","creativity":"Apple 订阅","creativityAriaLabel":"站长提供实惠Apple订阅共享服务","siteDays":"建站天数","sitePosts":"文章总数","siteWords":"全站字数","noPosts":"暂时还没有文章。","noPostsDescription":"新的内容正在准备中，欢迎稍后再来。","profileStats":"站点统计","featureSubtitle":"探索技术 创造可能","profile":"一名独立开发者，专注于技术探索与开源分享"},"zh-Hant":{"all":"全部","thisMonth":"本月發布","popular":"熱門文章","list":"列表","grid":"網格","learnMore":"了解詳情","languagePicker":"選擇語言","themeToggle":"切換主題","openMobileMenu":"開啟導覽選單","closeMobileMenu":"關閉導覽選單","showArticleContents":"顯示文章目錄","hideArticleContents":"隱藏文章目錄","navigationHome":"首頁","articleContents":"文章目錄","articleTags":"文章標籤","shareMenuLabel":"分享頁面","shareMenuHeading":"分享此頁面","shareQrCode":"掃描 QR Code 分享此頁面","shareToX":"分享到 X","copyShareLink":"複製連結","shareArticleCopied":"連結已複製","shareArticleError":"無法自動複製連結，請手動複製下方網址。","articleShareTitle":"喜歡這篇文章嗎？分享給更多人","articleShareDescription":"掃描 QR Code 開啟文章，或將連結分享給朋友。","articleDonationTitle":"支持作者","articleDonationDescription":"如果這篇文章對你有所幫助，歡迎支持我的創作。","donationBinance":"幣安","donationWechat":"微信","donationAlipay":"支付寶","pagination":"文章分頁","previousPage":"上一頁","nextPage":"下一頁","archive":"文章歸檔","notes":"隨記","services":"公益服務","about":"關於","creativity":"Apple 訂閱","creativityAriaLabel":"站長提供實惠的 Apple 訂閱共享服務","siteDays":"建站天數","sitePosts":"文章總數","siteWords":"全站字數","noPosts":"暫時還沒有文章。","noPostsDescription":"新內容正在準備中，歡迎稍後再來。","profileStats":"網站統計","featureSubtitle":"探索技術，創造可能","profile":"一名獨立開發者，專注於技術探索與開源分享"},"en":{"all":"All","thisMonth":"This month","popular":"Popular","list":"List","grid":"Grid","learnMore":"Learn more","languagePicker":"Select language","themeToggle":"Toggle theme","openMobileMenu":"Open navigation menu","closeMobileMenu":"Close navigation menu","showArticleContents":"Show article contents","hideArticleContents":"Hide article contents","navigationHome":"Home","articleContents":"Contents","articleTags":"Article tags","shareMenuLabel":"Share this page","shareMenuHeading":"Share this page","shareQrCode":"Scan to open this page","shareToX":"Share on X","copyShareLink":"Copy link","shareArticleCopied":"Link copied","shareArticleError":"Could not copy the link automatically. Please copy the URL below.","articleShareTitle":"Enjoyed this article? Share it with others","articleShareDescription":"Scan the QR code to open the article, or share the link with a friend.","articleDonationTitle":"Support the author","articleDonationDescription":"If you found this article helpful, consider supporting my work.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"Article pagination","previousPage":"Previous","nextPage":"Next","archive":"Archive","notes":"Notes","services":"Charity","about":"About","creativity":"Apple Subscriptions","creativityAriaLabel":"Affordable Apple subscription sharing services offered by the site owner","siteDays":"Days online","sitePosts":"Articles","siteWords":"Words","noPosts":"No articles yet.","noPostsDescription":"New content is on the way. Please check back soon.","profileStats":"Site statistics","featureSubtitle":"Explore technology and creative possibilities","profile":"An independent developer focused on exploring technology and sharing open source"},"ja":{"all":"すべて","thisMonth":"今月の記事","popular":"人気の記事","list":"リスト","grid":"グリッド","learnMore":"詳しく見る","languagePicker":"言語を選択","themeToggle":"テーマを切り替え","openMobileMenu":"ナビゲーションメニューを開く","closeMobileMenu":"ナビゲーションメニューを閉じる","showArticleContents":"目次を表示","hideArticleContents":"目次を隠す","navigationHome":"ホーム","articleContents":"目次","articleTags":"記事のタグ","shareMenuLabel":"ページを共有","shareMenuHeading":"このページを共有","shareQrCode":"QRコードを読み取ってページを共有","shareToX":"X で共有","copyShareLink":"リンクをコピー","shareArticleCopied":"リンクをコピーしました","shareArticleError":"リンクを自動でコピーできません。下のURLを手動でコピーしてください。","articleShareTitle":"この記事が気に入ったら、ぜひ共有してください","articleShareDescription":"QRコードで記事を開くか、リンクを友達に共有できます。","articleDonationTitle":"作者を応援する","articleDonationDescription":"この記事がお役に立てたら、創作へのご支援をお願いします。","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"記事のページ送り","previousPage":"前へ","nextPage":"次へ","archive":"アーカイブ","notes":"日々のメモ","services":"サービス","about":"このサイトについて","creativity":"Apple サブスクリプション","creativityAriaLabel":"サイト管理者が提供するお得な Apple サブスクリプション共有サービス","siteDays":"運営日数","sitePosts":"記事数","siteWords":"総単語数","noPosts":"記事はまだありません。","noPostsDescription":"新しい記事を準備中です。また後ほどご覧ください。","profileStats":"サイト統計","featureSubtitle":"テクノロジーを探求し、新たな可能性を創造する","profile":"技術の探求とオープンソースの共有に取り組む個人開発者"},"ko":{"all":"전체","thisMonth":"이번 달","popular":"인기 글","list":"목록","grid":"그리드","learnMore":"자세히 보기","languagePicker":"언어 선택","themeToggle":"테마 전환","openMobileMenu":"탐색 메뉴 열기","closeMobileMenu":"탐색 메뉴 닫기","showArticleContents":"목차 표시","hideArticleContents":"목차 숨기기","navigationHome":"홈","articleContents":"목차","articleTags":"글 태그","shareMenuLabel":"페이지 공유","shareMenuHeading":"이 페이지 공유","shareQrCode":"QR 코드를 스캔해 페이지 공유","shareToX":"X에 공유","copyShareLink":"링크 복사","shareArticleCopied":"링크가 복사되었습니다","shareArticleError":"링크를 자동으로 복사할 수 없습니다. 아래 URL을 직접 복사해 주세요.","articleShareTitle":"이 글이 마음에 드셨나요? 더 많은 사람과 공유해 보세요","articleShareDescription":"QR 코드를 스캔해 글을 열거나 링크를 친구와 공유하세요.","articleDonationTitle":"작성자 후원하기","articleDonationDescription":"이 글이 도움이 되었다면 창작 활동을 응원해 주세요.","donationBinance":"Binance","donationWechat":"WeChat Pay","donationAlipay":"Alipay","pagination":"글 페이지 이동","previousPage":"이전","nextPage":"다음","archive":"아카이브","notes":"짧은 메모","services":"서비스","about":"소개","creativity":"Apple 구독","creativityAriaLabel":"사이트 운영자가 제공하는 합리적인 Apple 구독 공유 서비스","siteDays":"운영 일수","sitePosts":"전체 글 수","siteWords":"전체 단어 수","noPosts":"아직 글이 없습니다.","noPostsDescription":"새 글을 준비하고 있습니다. 나중에 다시 방문해 주세요.","profileStats":"사이트 통계","featureSubtitle":"기술을 탐구하고 가능성을 만들다","profile":"기술 탐구와 오픈 소스 공유에 집중하는 독립 개발자"}}</script> <script data-astro-rerun>
+      (() => {
+      window.sitePageController?.abort();
+      const controller = new AbortController();
+      window.sitePageController = controller;
+      const listenerOptions = { signal: controller.signal };
+      const root = document.documentElement;
+      const withBase = (path) => {
+        if (!path.startsWith("/") || path.startsWith("//")) return path;
+        const base = root.dataset.baseUrl || "/";
+        const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+        if (path === normalizedBase.slice(0, -1) || path.startsWith(normalizedBase)) return path;
+        return `${normalizedBase}${path.slice(1)}`;
+      };
+      if (
+        root.dataset.pageType === "article" &&
+        window.matchMedia("(max-width: 980px)").matches
+      ) {
+        root.classList.add("toc-hidden");
+      } else {
+        root.classList.remove("toc-hidden");
+      }
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.pointerType !== "mouse" ||
+          !(event.target instanceof Element) ||
+          !event.target.closest(".site-header .brand, .site-header .site-nav .nav-links a")
+        ) return;
+        sessionStorage.setItem("navigation-hover-suppressed", "true");
+        root.dataset.navigationHoverSuppressed = "true";
+      }, { ...listenerOptions, capture: true });
+      window.addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "mouse") return;
+        sessionStorage.removeItem("navigation-hover-suppressed");
+        delete root.dataset.navigationHoverSuppressed;
+      }, listenerOptions);
+      const updateNavigationGradient = () => {
+        const header = document.querySelector(".site-header");
+        const capsule = header?.querySelector(".header-inner");
+        if (!header || !capsule || header.dataset.pageType === "article") {
+          capsule?.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const currentPageLink = header.querySelector(
+          '.brand[aria-current="page"], .site-nav .nav-links a[aria-current="page"]',
+        );
+        if (!currentPageLink) {
+          capsule.style.removeProperty("--navigation-gradient-shift");
+          return;
+        }
+        const capsuleRect = capsule.getBoundingClientRect();
+        const linkRect = currentPageLink.getBoundingClientRect();
+        capsule.style.setProperty(
+          "--navigation-gradient-shift",
+          `${linkRect.left + linkRect.width / 2 - capsuleRect.left - capsuleRect.width / 2}px`,
+        );
+      };
+      const preserveGradientTransition =
+        root.dataset.navigationGradientReady === "true";
+      const gradientStartRatio = window.navigationGradientStartRatio;
+      delete window.navigationGradientStartRatio;
+      const gradientCapsule = document.querySelector(".site-header .header-inner");
+      if (
+        gradientCapsule &&
+        document.querySelector(".site-header")?.dataset.pageType !== "article"
+      ) {
+        if (Number.isFinite(gradientStartRatio)) {
+          gradientCapsule.style.setProperty("--navigation-gradient-transition", "0s");
+          gradientCapsule.style.setProperty(
+            "--navigation-gradient-shift",
+            `${gradientCapsule.getBoundingClientRect().width * (gradientStartRatio - 0.5)}px`,
+          );
+          getComputedStyle(gradientCapsule, "::before").transform;
+          gradientCapsule.style.removeProperty("--navigation-gradient-transition");
+        }
+        updateNavigationGradient();
+        getComputedStyle(gradientCapsule, "::before").transform;
+        if (preserveGradientTransition) {
+          root.dataset.navigationGradientReady = "true";
+        } else {
+          void document.fonts.ready.then(() => {
+            requestAnimationFrame(() => {
+              if (root !== document.documentElement || !gradientCapsule.isConnected) return;
+              updateNavigationGradient();
+              getComputedStyle(gradientCapsule, "::before").transform;
+              root.dataset.navigationGradientReady = "true";
+            });
+          });
+        }
+      } else {
+        updateNavigationGradient();
+      }
+      window.addEventListener("resize", updateNavigationGradient, listenerOptions);
+      document
+        .querySelector("[data-theme-toggle]")
+        ?.addEventListener("click", () => {
+          window.clearTimeout(window.themeTransitionTimer);
+          root.classList.add("theme-changing");
+          getComputedStyle(root).getPropertyValue("--bg");
+          root.classList.toggle("dark");
+          localStorage.setItem(
+            "theme",
+            root.classList.contains("dark") ? "dark" : "light",
+          );
+          window.themeTransitionTimer = window.setTimeout(() => {
+            root.classList.remove("theme-changing");
+          }, 560);
+        }, listenerOptions);
+
+      const translations = JSON.parse(document.querySelector("#site-translations").textContent);
+      const tocToggle = document.querySelector("[data-toc-toggle]");
+      const articleTocs = [...document.querySelectorAll(".article-toc")];
+      const tocAnimations = new WeakMap();
+      const cancelTocAnimation = (toc) => {
+        const animations = tocAnimations.get(toc);
+        animations?.panel?.cancel();
+        animations?.contents?.cancel();
+        tocAnimations.delete(toc);
+        toc.style.removeProperty("height");
+        toc.style.removeProperty("max-height");
+        const contents = toc.querySelector(".toc");
+        contents?.style.removeProperty("max-height");
+        contents?.style.removeProperty("opacity");
+        contents?.style.removeProperty("overflow");
+        contents?.style.removeProperty("padding-top");
+      };
+      const setArticleTocHidden = (hidden, animate = false) => {
+        const visibleArticleTocs = articleTocs.filter((toc) =>
+          !toc.closest(".localized-article")?.hidden,
+        );
+        const currentHeights = new Map(visibleArticleTocs.map((toc) => [
+          toc,
+          toc.getBoundingClientRect().height,
+        ]));
+        currentHeights.forEach((_, toc) => {
+          cancelTocAnimation(toc);
+        });
+        root.classList.toggle("toc-hidden", hidden);
+        tocToggle?.setAttribute("aria-pressed", String(hidden));
+        articleTocs.forEach((toc) => {
+          toc.setAttribute("aria-hidden", String(hidden));
+          toc.inert = hidden;
+        });
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        tocToggle?.setAttribute(
+          "aria-label",
+          hidden ? dictionary.showArticleContents : dictionary.hideArticleContents,
+        );
+        if (animate) {
+          currentHeights.forEach((currentHeight, toc) => {
+            toc.style.maxHeight = "none";
+            const contents = toc.querySelector(".toc");
+            if (hidden) {
+              toc.style.height = `${currentHeight}px`;
+              toc.getBoundingClientRect();
+              const animation = toc.animate(
+                [{ height: `${currentHeight}px` }, { height: "0px" }],
+                { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              tocAnimations.set(toc, { panel: animation });
+              animation.onfinish = () => {
+                if (tocAnimations.get(toc)?.panel !== animation) return;
+                cancelTocAnimation(toc);
+              };
+              return;
+            }
+
+            if (!(contents instanceof HTMLElement)) return;
+            const maxHeight = Math.max(0, window.innerHeight - 120);
+            toc.style.removeProperty("height");
+            contents.style.removeProperty("max-height");
+            contents.style.removeProperty("opacity");
+            contents.style.removeProperty("overflow");
+            contents.style.removeProperty("padding-top");
+            toc.getBoundingClientRect();
+            const naturalPanelHeight = toc.getBoundingClientRect().height;
+            const expandedHeight = Math.min(
+              Number(toc.dataset.expandedHeight) || naturalPanelHeight,
+              maxHeight,
+            );
+            contents.style.maxHeight = "0px";
+            contents.style.opacity = "0";
+            contents.style.overflow = "hidden";
+            contents.style.paddingTop = "0px";
+            toc.getBoundingClientRect();
+            const headingHeight = toc.getBoundingClientRect().height;
+            const collapsedContentsHeight = contents.getBoundingClientRect().height;
+            const expandedContentsHeight = Math.max(
+              0,
+              expandedHeight - headingHeight + collapsedContentsHeight,
+            );
+            toc.style.height = "0px";
+            toc.getBoundingClientRect();
+
+            const opening = { panel: null, contents: null };
+            tocAnimations.set(toc, opening);
+            const runOpenAnimation = async () => {
+              const headerAnimation = toc.animate(
+                [{ height: "0px" }, { height: `${headingHeight}px` }],
+                { duration: 220, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              opening.panel = headerAnimation;
+              try {
+                await headerAnimation.finished;
+              } catch {
+                return;
+              }
+              if (tocAnimations.get(toc) !== opening) return;
+
+              const panelAnimation = toc.animate(
+                [{ height: `${headingHeight}px` }, { height: `${expandedHeight}px` }],
+                { duration: 420, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              const contentsAnimation = contents.animate(
+                [
+                  { maxHeight: "0px", opacity: 0, paddingTop: "0px" },
+                  {
+                    maxHeight: `${expandedContentsHeight}px`,
+                    opacity: 1,
+                    paddingTop: "16px",
+                  },
+                ],
+                { duration: 420, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+              );
+              opening.panel = panelAnimation;
+              opening.contents = contentsAnimation;
+              try {
+                await Promise.all([panelAnimation.finished, contentsAnimation.finished]);
+              } catch {
+                return;
+              }
+              if (tocAnimations.get(toc) === opening) cancelTocAnimation(toc);
+            };
+            void runOpenAnimation();
+          });
+        } else {
+          visibleArticleTocs.forEach((toc) => {
+            cancelTocAnimation(toc);
+            if (!hidden) {
+              toc.dataset.expandedHeight = String(toc.getBoundingClientRect().height);
+            }
+          });
+        }
+      };
+      if (tocToggle) setArticleTocHidden(root.classList.contains("toc-hidden"));
+      tocToggle?.addEventListener("click", () => {
+        const hidden = tocToggle.getAttribute("aria-pressed") !== "true";
+        setArticleTocHidden(hidden, true);
+      }, listenerOptions);
+      const languageSelect = document.querySelector("[data-language-select]");
+      const shareControl = document.querySelector("[data-share-control]");
+      const shareToggle = shareControl?.querySelector("[data-share-toggle]");
+      const shareMenu = shareControl?.querySelector(".share-menu");
+      const shareXs = [...document.querySelectorAll("[data-share-x]")];
+      const shareCopies = [...document.querySelectorAll("[data-share-copy]")];
+      const siteHeader = shareControl?.closest(".site-header");
+      if (shareMenu && siteHeader) siteHeader.append(shareMenu);
+      const getShareUrl = (language = root.dataset.language) => {
+        const canonicalLink = document.querySelector('link[rel="canonical"]');
+        const canonicalPath = canonicalLink instanceof HTMLLinkElement
+          ? new URL(canonicalLink.href).pathname
+          : window.location.pathname;
+        const normalizedPath = canonicalPath.replace(/\/+$/, "");
+        const sharePath = normalizedPath
+          ? `${normalizedPath}/${language.toLowerCase()}`
+          : `/${language.toLowerCase()}`;
+        return new URL(sharePath, window.location.origin);
+      };
+      const updateShareUrl = (language) => {
+        const shareUrl = getShareUrl(language).href;
+        const xUrl = new URL("https://twitter.com/intent/tweet");
+        xUrl.searchParams.set("text", shareUrl);
+        shareXs.forEach((shareX) => {
+          shareX.href = xUrl.href;
+          shareX.dataset.appHref = `twitter://post?message=${encodeURIComponent(shareUrl)}`;
+        });
+        window.dispatchEvent(new CustomEvent("share-url-update", {
+          detail: { url: shareUrl },
+        }));
+      };
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      shareXs.forEach((shareX) => {
+        shareX.addEventListener("click", (event) => {
+          if (
+            !isMobileDevice ||
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          event.preventDefault();
+          const appUrl = shareX.dataset.appHref;
+          if (!appUrl) return;
+          window.location.href = appUrl;
+        }, listenerOptions);
+      });
+      const setShareMenuOpen = (open) => {
+        if (!(shareToggle instanceof HTMLButtonElement) || !(shareMenu instanceof HTMLElement)) return;
+        shareToggle.setAttribute("aria-expanded", String(open));
+        shareMenu.hidden = !open;
+        document.body.classList.toggle("share-menu-open", open);
+        if (open) {
+          window.dispatchEvent(new CustomEvent("share-url-update", {
+            detail: { url: getShareUrl().href },
+          }));
+        }
+      };
+      shareToggle?.addEventListener("click", () => {
+        setShareMenuOpen(shareToggle.getAttribute("aria-expanded") !== "true");
+      }, listenerOptions);
+      shareCopies.forEach((shareCopy) => {
+        shareCopy.addEventListener("click", async () => {
+          const language = root.dataset.language;
+          const dictionary = translations[language] ?? translations["zh-Hans"];
+          const shareUrl = getShareUrl(language);
+          try {
+            await navigator.clipboard.writeText(shareUrl.href);
+            shareCopy.textContent = dictionary.shareArticleCopied;
+            window.setTimeout(() => {
+              if (shareCopy.isConnected) {
+                const currentDictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+                shareCopy.textContent = currentDictionary.copyShareLink;
+              }
+            }, 1800);
+          } catch {
+            window.prompt(dictionary.shareArticleError, shareUrl.href);
+          }
+        }, listenerOptions);
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          !(event.target instanceof Element) ||
+          (!event.target.closest("[data-share-control]") && !shareMenu?.contains(event.target))
+        ) {
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+      const applyLanguage = (language) => {
+        const availableLanguages = JSON.parse(root.dataset.availableLanguages || '["zh-Hans","en"]');
+        const defaultLanguage = root.dataset.defaultLanguage || "zh-Hans";
+        const requestedLanguage = language === "zh" && availableLanguages.includes("zh-Hans")
+          ? "zh-Hans"
+          : language;
+        const effectiveLanguage = availableLanguages.includes(requestedLanguage)
+          ? requestedLanguage
+          : defaultLanguage;
+        const dictionary = translations[effectiveLanguage] ?? translations["zh-Hans"];
+        root.dataset.language = effectiveLanguage;
+        document.documentElement.lang = effectiveLanguage;
+        const localizedArticles = [...document.querySelectorAll(".localized-article")];
+        if (localizedArticles.length > 0) {
+          const selectedArticle =
+            localizedArticles.find(
+              (article) => article.lang.toLowerCase() === effectiveLanguage.toLowerCase(),
+            ) ??
+            localizedArticles.find((article) => article.lang === "zh-Hans") ??
+            localizedArticles.find((article) => article.lang === "zh") ??
+            localizedArticles[0];
+          localizedArticles.forEach((article) => {
+            article.hidden = article !== selectedArticle;
+          });
+        }
+        const localizedMetadata = root.dataset.localizedMetadata
+          ? JSON.parse(root.dataset.localizedMetadata)
+          : null;
+        const metadata = localizedMetadata?.[effectiveLanguage];
+        if (metadata) {
+          document.title = metadata.title;
+          document
+            .querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]')
+            .forEach((element) => {
+              element.content = metadata.description;
+            });
+          document
+            .querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]')
+            .forEach((element) => {
+              element.content = metadata.title;
+            });
+          if (metadata.image) {
+            document
+              .querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]')
+              .forEach((element) => {
+                element.content = new URL(metadata.image, window.location.origin).href;
+              });
+          }
+          if (metadata.imageAlt) {
+            document
+              .querySelectorAll('meta[property="og:image:alt"], meta[name="twitter:image:alt"]')
+              .forEach((element) => {
+                element.content = metadata.imageAlt;
+              });
+          }
+        }
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const value = dictionary[element.dataset.i18n];
+          if (value) element.textContent = value;
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAria];
+          if (value) element.setAttribute("aria-label", value);
+        });
+        if (tocToggle instanceof HTMLButtonElement) {
+          setArticleTocHidden(tocToggle.getAttribute("aria-pressed") === "true");
+        }
+        document.querySelectorAll("[data-i18n-alt]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nAlt];
+          if (value) element.setAttribute("alt", value);
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+          const value = dictionary[element.dataset.i18nPlaceholder];
+          if (value) element.setAttribute("placeholder", value);
+        });
+        const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+        if (mobileMenuToggle) {
+          const label = mobileMenuToggle.getAttribute("aria-expanded") === "true"
+            ? dictionary.closeMobileMenu
+            : dictionary.openMobileMenu;
+          mobileMenuToggle.setAttribute("aria-label", label);
+        }
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete("lang");
+        const legacyLanguageHash = new URLSearchParams(currentUrl.hash.slice(1)).get("lang");
+        if (legacyLanguageHash) currentUrl.hash = "";
+        const canonical = document.querySelector('link[rel="canonical"]');
+        if (
+          root.dataset.pageType === "article" &&
+          root.dataset.shareLanguage &&
+          canonical instanceof HTMLLinkElement
+        ) {
+          currentUrl.pathname = new URL(canonical.href).pathname;
+        }
+        if (`${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` !==
+          `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+          window.history.replaceState(window.history.state, "", currentUrl);
+        }
+        const openGraphUrl = document.querySelector('meta[property="og:url"]');
+        if (openGraphUrl instanceof HTMLMetaElement) {
+          openGraphUrl.content = new URL(currentUrl.pathname, window.location.origin).href;
+        }
+        const openGraphLocale = document.querySelector('meta[property="og:locale"]');
+        const socialLocales = {
+          "zh-Hans": "zh_CN",
+          "zh-Hant": "zh_TW",
+          en: "en_US",
+          ja: "ja_JP",
+          ko: "ko_KR",
+        };
+        if (openGraphLocale instanceof HTMLMetaElement) {
+          openGraphLocale.content = socialLocales[effectiveLanguage] ?? socialLocales["zh-Hans"];
+        }
+        const homeLink = document.querySelector("[data-home-link]");
+        if (homeLink instanceof HTMLAnchorElement) {
+          homeLink.href = withBase("/");
+        }
+        document.querySelectorAll("[data-post-href]").forEach((element) => {
+          if (!(element instanceof HTMLAnchorElement)) return;
+          const basePath = new URL(element.dataset.postHref, window.location.origin).pathname;
+          element.href = basePath;
+        });
+        updateShareUrl(effectiveLanguage);
+        languageSelect.value = effectiveLanguage;
+        root.dataset.languageReady = "true";
+        root.removeAttribute("data-language-pending");
+        document.dispatchEvent(new CustomEvent("site-language-change", {
+          detail: { language: effectiveLanguage },
+        }));
+      };
+      const currentUrl = new URL(window.location.href);
+      const requestedLanguage =
+        new URLSearchParams(currentUrl.hash.slice(1)).get("lang") ||
+        currentUrl.searchParams.get("lang") ||
+        root.dataset.shareLanguage;
+      const savedLanguage = localStorage.getItem("language-preference");
+      applyLanguage(requestedLanguage || savedLanguage || root.dataset.language);
+      languageSelect?.addEventListener("change", () => {
+        const language = languageSelect.value;
+        localStorage.setItem("language-preference", language);
+        applyLanguage(language);
+      }, listenerOptions);
+
+      const mobileMenuToggle = document.querySelector("[data-mobile-menu-toggle]");
+      const mobileNavBackdrop = document.querySelector("[data-mobile-nav-backdrop]");
+      const setMobileMenuOpen = (open) => {
+        document.body.classList.toggle("mobile-nav-open", open);
+        mobileMenuToggle?.setAttribute("aria-expanded", String(open));
+        const dictionary = translations[root.dataset.language] ?? translations["zh-Hans"];
+        mobileMenuToggle?.setAttribute(
+          "aria-label",
+          open ? dictionary.closeMobileMenu : dictionary.openMobileMenu,
+        );
+      };
+      mobileMenuToggle?.addEventListener("click", () => {
+        const open = !document.body.classList.contains("mobile-nav-open");
+        if (open) setShareMenuOpen(false);
+        setMobileMenuOpen(open);
+      }, listenerOptions);
+      document.addEventListener("pointerdown", (event) => {
+        if (
+          event.target instanceof Element &&
+          !event.target.closest(".site-nav, [data-mobile-menu-toggle]")
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, listenerOptions);
+      window.addEventListener("scroll", (event) => {
+        if (
+          document.body.classList.contains("mobile-nav-open") &&
+          !(event.target instanceof Element && event.target.closest(".site-nav"))
+        ) {
+          setMobileMenuOpen(false);
+        }
+      }, { ...listenerOptions, capture: true, passive: true });
+      const closeMobileMenuOnScroll = () => {
+        if (document.body.classList.contains("mobile-nav-open")) {
+          setMobileMenuOpen(false);
+        }
+      };
+      window.addEventListener("wheel", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        capture: true,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("touchmove", closeMobileMenuOnScroll, {
+        ...listenerOptions,
+        passive: true,
+      });
+      mobileNavBackdrop?.addEventListener("click", () => {
+        setMobileMenuOpen(false);
+        setShareMenuOpen(false);
+      }, listenerOptions);
+      document.querySelectorAll(".site-nav a").forEach((link) => {
+        link.addEventListener("click", () => setMobileMenuOpen(false), listenerOptions);
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setMobileMenuOpen(false);
+          setShareMenuOpen(false);
+        }
+      }, listenerOptions);
+
+      document.querySelectorAll("pre").forEach((block) => {
+        const button = document.createElement("button");
+        button.className = "copy-code";
+        button.type = "button";
+        button.textContent = "复制";
+        button.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(
+            block.querySelector("code")?.innerText || block.innerText,
+          );
+          button.textContent = "已复制";
+          setTimeout(() => (button.textContent = "复制"), 1400);
+        }, listenerOptions);
+        block.appendChild(button);
+      });
+
+      document.querySelectorAll(".video-embed iframe").forEach((frame) => {
+        const width = Number(frame.getAttribute("width"));
+        const height = Number(frame.getAttribute("height"));
+        if (width > 0 && height > 0) {
+          frame.parentElement.style.setProperty(
+            "--video-ratio",
+            `${width} / ${height}`,
+          );
+          frame.parentElement.classList.toggle("portrait", width < height);
+          frame.parentElement.classList.toggle("square", width === height);
+        }
+
+        try {
+          const videoUrl = new URL(frame.src, window.location.href);
+          if (/(^|\.)youtube(?:-nocookie)?\.com$/.test(videoUrl.hostname)) {
+            videoUrl.searchParams.set("rel", "0");
+            videoUrl.searchParams.set("modestbranding", "1");
+            videoUrl.searchParams.set("playsinline", "1");
+            videoUrl.searchParams.set("iv_load_policy", "3");
+            frame.src = videoUrl.toString();
+          }
+        } catch {
+          // Leave embeds from other providers untouched.
+        }
+      });
+      })();
+    </script> <script type="module" src="/_astro/BaseLayout.astro_astro_type_script_index_0_lang.D6bboDWB.js"></script> </body> </html>
